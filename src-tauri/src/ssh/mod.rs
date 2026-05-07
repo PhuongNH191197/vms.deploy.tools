@@ -128,6 +128,14 @@ impl SshSession {
         Ok(output.trim().to_string())
     }
 
+    /// Open a raw session channel for streaming use (caller manages exec + reading).
+    pub async fn open_channel(&mut self) -> Result<russh::Channel<russh::client::Msg>, AppError> {
+        self.session
+            .channel_open_session()
+            .await
+            .map_err(|e| AppError::Ssh(e.to_string()))
+    }
+
     pub async fn open_sftp(&mut self) -> Result<SftpSession, AppError> {
         let channel = self
             .session

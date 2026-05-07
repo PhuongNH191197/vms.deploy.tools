@@ -9,6 +9,7 @@ use commands::server::{DbState, add_server, get_servers, delete_server, test_con
 use commands::env_check::{check_env_tools, install_env_tool};
 use commands::wizard::{create_docker_networks, upload_path, write_vms_env, write_remote_file};
 use commands::deploy::{run_ssh_stream, run_deploy_step, save_deploy_record, get_deploy_history, get_snapshots, rollback_deployment};
+use commands::monitor::{LogStreamState, get_container_info, stream_container_logs, stop_log_stream, docker_container_action};
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,6 +34,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .manage(DbState(pool))
+        .manage(LogStreamState::new())
         .invoke_handler(tauri::generate_handler![
             add_server,
             get_servers,
@@ -52,6 +54,10 @@ pub fn run() {
             get_deploy_history,
             get_snapshots,
             rollback_deployment,
+            get_container_info,
+            stream_container_logs,
+            stop_log_stream,
+            docker_container_action,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
