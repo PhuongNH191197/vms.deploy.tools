@@ -171,7 +171,7 @@ File: docs/PRD.md — đọc file này để biết full spec.
 - Audit log: auto capture operator_ip + hostname
 
 ## Sprint Hiện Tại
-SPRINT: S7 — DONE (v1.0 complete)
+SPRINT: P3 — DONE (production ready)
 FOCUS: —
 STATUS: ✅ COMPLETE
 
@@ -191,8 +191,34 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Sprint S7 hoàn thành — Audit.tsx, Home.tsx nav, deploy_repo get_audit_logs
+LAST_ACTION: Bug fix session — tests, SFTP flush, Wizard upload compose/tar
 CURRENT_FILE: —
-NEXT_STEP: v1.0 shipped. Next: P2 features (bulk deploy, metrics history, export reports)
+NEXT_STEP: Test thực tế Step4→Step7 deploy với server Docker 127.0.0.1:2222 (root/Elcom@123)
 BLOCKED_BY: —
-NOTES: tsc PASS 0 errors, cargo check 0 errors 6 warnings. feat(s7) committed 5 files.
+NOTES: tsc 0 errors, cargo check 0 errors 4 pre-existing warnings. 5 commits sau P3.
+
+### Bugs đã fix trong session này:
+1. **Step2 EnvCheck sai kết quả** — thêm `command -v` gate vào check_command(), tool missing → empty output → installed=false
+2. **Install tool báo Done nhưng chưa cài** — fix: root detection (bỏ sudo -n cho root), dùng `&&`/`||` thay `;`, thêm DEBIAN_FRONTEND=noninteractive
+3. **Tool list cứng trong frontend** — chuyển sang backend-driven: `list_supported_tools()` Rust command, Step2 load dynamic từ API, checkbox UI 2-col
+4. **Nút "← Home" thiếu ở Setup page** — thêm vào header Setup.tsx
+5. **docker-compose.yml không upload** — composeFolderPath collected ở Step4 nhưng KHÔNG BAO GIỜ được invoke("upload_path") trong Step7 → docker-compose up -d chạy trên dir rỗng. FIX: Step7 upload tar + compose trước khi chạy docker commands
+6. **tarPath dùng sai** — Step7 dùng hardcoded `${svc.name}.tar` thay vì filename thực từ tarPath
+7. **composeFolderPath chỉ show cho offline** — online mode cũng cần compose file, đã move ra ngoài if-block
+8. **SFTP file không flush** — thêm `file.shutdown().await` sau write_all trong write_vms_env, write_remote_file, scp::upload_file
+
+### Files đã tạo mới trong session này:
+- src/lib/csvExport.ts — pure CSV utility + 19 Vitest tests
+- src/lib/csvExport.test.ts
+- docs/HUONG_DAN_SU_DUNG.md — Vietnamese A-Z user manual
+- src-tauri/src/ssh/mod.rs — integration tests (14 tests, #[ignore])
+
+### Tests đã thêm:
+- env_check.rs: 16 unit tests (check_command, install_command, serde)
+- ssh/server_info.rs: 8 tests parse_ram/parse_disk
+- ssh/metrics.rs: 9 tests parse_ram/parse_disk
+- monitor.rs: 10 tests validate_container_name
+- db/server_repo.rs: 7 tests
+- db/deploy_repo.rs: 13 tests
+- templates.rs: 8 tests + bug fix (serde_default)
+- ssh/mod.rs: 14 integration tests (#[ignore])
