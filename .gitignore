@@ -32,5 +32,49 @@ src-tauri/target/
 *.db-wal
 
 # Environment
+.env
 .env.local
 .env.*.local
+
+# Claude Code / AI tools
+.claude/
+.rtk/
+
+# Personal notes
+Note.txt
+*.bak
+*.orig
+
+# SSH credentials / keys
+*.pem
+*.ppk
+*.key
+*.p12
+*.pfx
+
+# Docker image tarballs (large binaries)
+*.tar
+*.tar.gz
+*.tar.bz2
+
+# Built installers / executables
+*.msi
+*.exe
+dist/
+
+# Windows system files
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# VSCode (keep only extensions.json)
+.vscode/*
+!.vscode/extensions.json
+
+# Test coverage
+coverage/
+
+# Temp files
+*.tmp
+*.swp
+~$*
