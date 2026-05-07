@@ -58,6 +58,22 @@ export interface Snapshot {
   created_at: string;
 }
 
+export interface ServerMetrics {
+  cpu_percent: number;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  ram_percent: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  disk_percent: number;
+}
+
+export interface ToolCheckResult {
+  name: string;
+  installed: boolean;
+  version: string | null;
+}
+
 export type ServerGroup = "production" | "staging" | "lab" | "all";
 export type AuthType = "password" | "key";
 export type ServerStatus = "online" | "warning" | "offline" | "unknown";

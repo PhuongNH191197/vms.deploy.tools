@@ -6,6 +6,7 @@ use crate::crypto;
 use crate::db::server_repo::{self, CreateServerInput, ServerRow};
 use crate::error::AppError;
 use crate::ssh::{server_info::ServerInfo, SshSession};
+use crate::ssh::metrics::ServerMetrics;
 
 pub struct DbState(pub SqlitePool);
 
@@ -149,4 +150,28 @@ pub async fn fetch_server_info(
     session.disconnect().await.map_err(|e| e.to_string())?;
 
     Ok(info)
+}
+
+#[tauri::command]
+pub async fn get_server_metrics(
+    host: String,
+    port: u16,
+    username: String,
+    auth_type: String,
+    credential: String,
+) -> Result<ServerMetrics, String> {
+    let mut session = match auth_type.as_str() {
+        "password" => SshSession::connect_password(&host, port, &username, &credential).await,
+        "key" => SshSession::connect_key(&host, port, &username, &credential, None).await,
+        _ => return Err("Invalid auth_type".into()),
+    }
+    .map_err(|e| e.to_string())?;
+
+    let metrics = crate::ssh::metrics::fetch_metrics(&mut session)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    session.disconnect().await.map_err(|e| e.to_string())?;
+
+    Ok(metrics)
 }

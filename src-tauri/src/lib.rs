@@ -5,7 +5,8 @@ mod scp;
 mod db;
 mod commands;
 
-use commands::server::{DbState, add_server, get_servers, delete_server, test_connection, fetch_server_info};
+use commands::server::{DbState, add_server, get_servers, delete_server, test_connection, fetch_server_info, get_server_metrics};
+use commands::env_check::{check_env_tools, install_env_tool};
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -36,6 +37,9 @@ pub fn run() {
             delete_server,
             test_connection,
             fetch_server_info,
+            get_server_metrics,
+            check_env_tools,
+            install_env_tool,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

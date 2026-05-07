@@ -2,14 +2,27 @@ import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Trash2, Info, Server } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, Plus, Trash2, Info, Server, Circle } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
+import { useMonitorStore } from "@/store/monitorStore";
 import AddServerDialog from "@/components/AddServerDialog";
 import ServerInfoPanel from "@/components/ServerInfoPanel";
-import type { Server as ServerType, ServerGroup } from "@/types";
+import type { Server as ServerType, ServerGroup, ServerStatus } from "@/types";
+
+function StatusDot({ status }: { status: ServerStatus }) {
+  const colors: Record<ServerStatus, string> = {
+    online: "text-green-500",
+    warning: "text-yellow-400",
+    offline: "text-red-500",
+    unknown: "text-muted-foreground",
+  };
+  return <Circle size={10} className={`fill-current ${colors[status]}`} />;
+}
 
 export default function Home() {
   const { servers, loading, fetchServers, removeServer } = useServerStore();
+  const { entries } = useMonitorStore();
   const [addOpen, setAddOpen] = useState(false);
   const [infoServerId, setInfoServerId] = useState<string | null>(null);
 
@@ -67,25 +80,43 @@ export default function Home() {
                     <table className="w-full text-sm">
                       <thead className="border-b bg-muted/40">
                         <tr>
+                          <th className="w-6 px-3 py-2" />
                           <th className="text-left px-4 py-2 font-medium">Tên</th>
                           <th className="text-left px-4 py-2 font-medium">Host</th>
-                          <th className="text-left px-4 py-2 font-medium">Port</th>
                           <th className="text-left px-4 py-2 font-medium">Nhóm</th>
-                          <th className="text-left px-4 py-2 font-medium">Last seen</th>
+                          <th className="text-left px-4 py-2 font-medium w-28">CPU</th>
+                          <th className="text-left px-4 py-2 font-medium w-28">RAM</th>
                           <th className="text-right px-4 py-2 font-medium">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filtered(g).map((server) => (
+                        {filtered(g).map((server) => {
+                          const mon = entries[server.id];
+                          const status: ServerStatus = mon?.status ?? "unknown";
+                          const metrics = mon?.metrics;
+                          return (
                           <tr key={server.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                            <td className="px-3 py-3"><StatusDot status={status} /></td>
                             <td className="px-4 py-3 font-medium">{server.name}</td>
-                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{server.host}</td>
-                            <td className="px-4 py-3 text-muted-foreground">{server.port}</td>
+                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{server.host}:{server.port}</td>
                             <td className="px-4 py-3">
                               <Badge variant="outline" className="capitalize text-xs">{server.group_name}</Badge>
                             </td>
-                            <td className="px-4 py-3 text-xs text-muted-foreground">
-                              {server.last_seen ? new Date(server.last_seen).toLocaleString("vi-VN") : "—"}
+                            <td className="px-4 py-3">
+                              {metrics ? (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">{metrics.cpu_percent}%</div>
+                                  <Progress value={metrics.cpu_percent} className="h-1" />
+                                </div>
+                              ) : <span className="text-xs text-muted-foreground">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {metrics ? (
+                                <div className="space-y-1">
+                                  <div className="text-xs text-muted-foreground">{metrics.ram_percent}%</div>
+                                  <Progress value={metrics.ram_percent} className="h-1" />
+                                </div>
+                              ) : <span className="text-xs text-muted-foreground">—</span>}
                             </td>
                             <td className="px-4 py-3 text-right flex justify-end gap-1">
                               <Button
@@ -109,7 +140,7 @@ export default function Home() {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                        );})}
                       </tbody>
                     </table>
                   </div>

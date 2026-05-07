@@ -1,4 +1,5 @@
 pub mod server_info;
+pub mod metrics;
 
 use async_trait::async_trait;
 use russh::{client, ChannelMsg, Disconnect};
