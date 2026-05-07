@@ -6,6 +6,27 @@ export interface EnvVar {
   value: string;
 }
 
+export interface AppModule {
+  id: string;
+  name: string;
+  source: "online" | "offline" | "git";
+  image: string;       // online: registry/image
+  version: string;     // online: tag
+  tarServerPath: string; // offline: path on server (pre-uploaded)
+  gitUrl: string;
+  gitBranch: string;
+  gitToken: string;    // in-memory only
+}
+
+export type DeployStepStatus = "pending" | "running" | "done" | "failed";
+
+export interface DeployStep {
+  id: string;
+  label: string;
+  status: DeployStepStatus;
+  error?: string;
+}
+
 export interface ExternalServiceConfig {
   name: string;
   displayName: string;
@@ -44,6 +65,12 @@ interface WizardState {
   // Step 5
   envVars: Record<string, EnvVar[]>; // keyed by service name
 
+  // Step 6
+  apps: AppModule[];
+
+  // Step 7
+  deploySteps: DeployStep[];
+
   // Actions
   setStep: (n: number) => void;
   nextStep: () => void;
@@ -62,12 +89,18 @@ interface WizardState {
   addEnvVar: (service: string) => void;
   updateEnvVar: (service: string, index: number, patch: Partial<EnvVar>) => void;
   removeEnvVar: (service: string, index: number) => void;
+  addApp: () => void;
+  removeApp: (id: string) => void;
+  updateApp: (id: string, patch: Partial<AppModule>) => void;
+  setDeploySteps: (steps: DeployStep[]) => void;
+  updateDeployStep: (id: string, patch: Partial<DeployStep>) => void;
   reset: () => void;
 }
 
 const DEFAULT: Pick<WizardState,
   "currentStep" | "selectedServerId" | "environment" | "credential" | "envCheckResults" |
-  "dockerNetworks" | "networkResults" | "selectedExternals" | "rootPath" | "envVars"
+  "dockerNetworks" | "networkResults" | "selectedExternals" | "rootPath" | "envVars" |
+  "apps" | "deploySteps"
 > = {
   currentStep: 1,
   selectedServerId: null,
@@ -79,6 +112,8 @@ const DEFAULT: Pick<WizardState,
   selectedExternals: [],
   rootPath: "/opt/vms",
   envVars: {},
+  apps: [],
+  deploySteps: [],
 };
 
 export const useWizardStore = create<WizardState>((set) => ({
@@ -142,6 +177,29 @@ export const useWizardStore = create<WizardState>((set) => ({
         ...s.envVars,
         [service]: (s.envVars[service] ?? []).filter((_, i) => i !== index),
       },
+    })),
+
+  addApp: () =>
+    set((s) => ({
+      apps: [...s.apps, {
+        id: crypto.randomUUID(),
+        name: "", source: "online", image: "", version: "latest",
+        tarServerPath: "", gitUrl: "", gitBranch: "main", gitToken: "",
+      }],
+    })),
+
+  removeApp: (id) => set((s) => ({ apps: s.apps.filter((a) => a.id !== id) })),
+
+  updateApp: (id, patch) =>
+    set((s) => ({ apps: s.apps.map((a) => a.id === id ? { ...a, ...patch } : a) })),
+
+  setDeploySteps: (steps) => set({ deploySteps: steps }),
+
+  updateDeployStep: (id, patch) =>
+    set((s) => ({
+      deploySteps: s.deploySteps.map((step) =>
+        step.id === id ? { ...step, ...patch } : step
+      ),
     })),
 
   reset: () => set({ ...DEFAULT }),

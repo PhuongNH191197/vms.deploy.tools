@@ -35,4 +35,5 @@ base64 = "0.22"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 async-trait = "0.1"
+hostname = "0.4"
 

@@ -138,3 +138,39 @@ pub async fn write_vms_env(
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn write_remote_file(
+    host: String,
+    port: u16,
+    username: String,
+    auth_type: String,
+    credential: String,
+    remote_path: String,
+    content: String,
+) -> Result<(), String> {
+    let mut session = open_session(&host, port, &username, &auth_type, &credential)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Ensure parent directory exists
+    if let Some(parent) = std::path::Path::new(&remote_path).parent() {
+        let parent_str = parent.to_string_lossy();
+        if !parent_str.is_empty() {
+            session
+                .execute(&format!("mkdir -p {parent_str}"))
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    let sftp = session.open_sftp().await.map_err(|e| e.to_string())?;
+    let mut file = sftp.create(&remote_path).await.map_err(|e| e.to_string())?;
+
+    use tokio::io::AsyncWriteExt;
+    file.write_all(content.as_bytes()).await.map_err(|e| e.to_string())?;
+
+    sftp.close().await.ok();
+    session.disconnect().await.ok();
+    Ok(())
+}
