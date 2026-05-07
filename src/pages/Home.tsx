@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList, Zap } from "lucide-react";
+import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList, Zap, FolderGit2 } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
 import { useMonitorStore } from "@/store/monitorStore";
 import AddServerDialog from "@/components/AddServerDialog";
@@ -87,6 +87,9 @@ export default function Home() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => navigate("/audit")}>
               <ClipboardList size={13} className="mr-1" /> Audit
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/templates")}>
+              <FolderGit2 size={13} className="mr-1" /> Templates
             </Button>
             <Button size="sm" onClick={() => setAddOpen(true)}>
               <Plus size={13} className="mr-1" /> Thêm Server

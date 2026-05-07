@@ -6,6 +6,7 @@ import Setup from "./pages/Setup";
 import Update from "./pages/Update";
 import Monitor from "./pages/Monitor";
 import Audit from "./pages/Audit";
+import Templates from "./pages/Templates";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <Route path="/update" element={<Update />} />
         <Route path="/monitor" element={<Monitor />} />
         <Route path="/audit" element={<Audit />} />
+        <Route path="/templates" element={<Templates />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,
