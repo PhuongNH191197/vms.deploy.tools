@@ -178,8 +178,8 @@ NEXT: Viết src-tauri/src/ssh/mod.rs
 
 ## Progress Tracker
 - [x] S1: SSH core + Server CRUD + UI DONE. Committed feat(s1).
-- [ ] S2: Server Dashboard + Env Check UI
-- [ ] S3: Wizard Bước 3-4 (Networks + Externals)
+- [x] S2: Server Dashboard + Env Check UI DONE. Committed feat(s2).
+- [x] S3: Wizard 7 steps + SCP module DONE. Committed feat(s3).
 - [ ] S4: ENV Config + vms.env generation
 - [ ] S5: App module deploy + Rollback
 - [ ] S6: Monitor + Logs xterm.js
@@ -192,8 +192,8 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Sprint S2 hoàn thành — metrics polling, env check UI, xterm.js terminal
+LAST_ACTION: Sprint S3 hoàn thành — Setup.tsx wizard container, Steps 1-7, SCP module, upload_path command
 CURRENT_FILE: —
-NEXT_STEP: Sprint S3 — T21 StepWizard 7-step component
+NEXT_STEP: Sprint S4 — ENV Config UI + vms.env generation
 BLOCKED_BY: —
-NOTES: tsc PASS, cargo check PASS. feat(s2) committed 12 files. Task reports: docs/tasks/
+NOTES: tsc PASS, cargo check 0 errors 5 warnings. feat(s3) committed 19 files. Steps 5-7 are placeholders.
