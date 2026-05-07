@@ -11,6 +11,29 @@ export interface Server {
   last_seen: string | null;
 }
 
+export interface ServerInfo {
+  hostname: string;
+  os: string;
+  kernel: string;
+  cpu_cores: number;
+  ram_total_mb: number;
+  ram_used_mb: number;
+  disk_total_gb: number;
+  disk_used_gb: number;
+  disk_percent: number;
+  uptime_seconds: number;
+}
+
+export interface AddServerPayload {
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  auth_type: "password" | "key";
+  credential: string;
+  group_name: string;
+}
+
 export interface DeployHistory {
   id: string;
   server_id: string;
@@ -35,9 +58,6 @@ export interface Snapshot {
   created_at: string;
 }
 
-export interface ServerMetrics {
-  cpu_percent: number;
-  ram_used_mb: number;
-  ram_total_mb: number;
-  disk_percent: number;
-}
+export type ServerGroup = "production" | "staging" | "lab" | "all";
+export type AuthType = "password" | "key";
+export type ServerStatus = "online" | "warning" | "offline" | "unknown";

@@ -1,1 +1,1 @@
-// TODO: Tauri command handlers (IPC bridge)
+pub mod server;
