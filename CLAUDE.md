@@ -192,8 +192,8 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Sprint S1 hoàn thành — SSH core, server CRUD, UI AddServerDialog, Home page
+LAST_ACTION: Sprint S2 hoàn thành — metrics polling, env check UI, xterm.js terminal
 CURRENT_FILE: —
-NEXT_STEP: Sprint S2 — T17 Server status polling (30s interval)
+NEXT_STEP: Sprint S3 — T21 StepWizard 7-step component
 BLOCKED_BY: —
-NOTES: tsc PASS, cargo check PASS. 24 files committed feat(s1). Session history: docs/tasks/
+NOTES: tsc PASS, cargo check PASS. feat(s2) committed 12 files. Task reports: docs/tasks/

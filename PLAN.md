@@ -300,8 +300,8 @@ Mỗi sprint: chạy `npx tsc --noEmit` + `cargo check` — fix hết lỗi trư
 |--------|--------|-------|
 | Scaffold | ✅ DONE | Tất cả deps + folder structure |
 | S1 — SSH Core | ✅ DONE | T01–T16 |
-| S2 — Dashboard | 🔄 NEXT | T17–T20 |
-| S3 — Wizard 3-4 | ⏳ | T21–T25 |
+| S2 — Dashboard | ✅ DONE | T17–T20 |
+| S3 — Wizard 3-4 | 🔄 NEXT | T21–T25 |
 | S4 — ENV | ⏳ | T26–T28 |
 | S5 — Deploy | ⏳ | T29–T33 |
 | S6 — Monitor | ⏳ | T34–T37 |
