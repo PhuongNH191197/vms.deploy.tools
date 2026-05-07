@@ -23,17 +23,7 @@
       "csp": null
     }
   },
-  "plugins": {
-    "shell": {
-      "open": true,
-      "execute": true,
-      "sidecar": false
-    },
-    "fs": {
-      "all": true,
-      "scope": ["$HOME/**", "$APPDATA/**", "$APPLOCALDATA/**"]
-    }
-  },
+  "plugins": {},
   "bundle": {
     "active": true,
     "targets": "all",

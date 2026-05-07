@@ -171,10 +171,9 @@ File: docs/PRD.md — đọc file này để biết full spec.
 - Audit log: auto capture operator_ip + hostname
 
 ## Sprint Hiện Tại
-SPRINT: S1 — Tuần 1-2
-FOCUS: Project scaffold + SSH Core Rust
-STATUS: 🔄 IN PROGRESS
-NEXT: Viết src-tauri/src/ssh/mod.rs
+SPRINT: S7 — DONE (v1.0 complete)
+FOCUS: —
+STATUS: ✅ COMPLETE
 
 ## Progress Tracker
 - [x] S1: SSH core + Server CRUD + UI DONE. Committed feat(s1).
@@ -182,8 +181,8 @@ NEXT: Viết src-tauri/src/ssh/mod.rs
 - [x] S3: Wizard 7 steps + SCP module DONE. Committed feat(s3).
 - [x] S4: ENV Config + vms.env generation DONE. Committed feat(s4).
 - [x] S5: App deploy + Rollback + Update page DONE. Committed feat(s5).
-- [ ] S6: Monitor + Logs xterm.js
-- [ ] S7: Audit log + Multi-tab + Polish
+- [x] S6: Monitor + Logs xterm.js DONE. Committed feat(s6).
+- [x] S7: Audit log + Multi-tab + Polish DONE. Committed feat(s7).
 
 ## Token Warning Rule
 Khi còn khoảng 20% context window:
@@ -192,8 +191,8 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Sprint S5 hoàn thành — Step6/7, deploy_repo, deploy commands, Update.tsx rollback
+LAST_ACTION: Sprint S7 hoàn thành — Audit.tsx, Home.tsx nav, deploy_repo get_audit_logs
 CURRENT_FILE: —
-NEXT_STEP: Sprint S6 — Monitor + Logs xterm.js
+NEXT_STEP: v1.0 shipped. Next: P2 features (bulk deploy, metrics history, export reports)
 BLOCKED_BY: —
-NOTES: tsc PASS, cargo check 0 errors 6 warnings. feat(s5) committed 12 files.
+NOTES: tsc PASS 0 errors, cargo check 0 errors 6 warnings. feat(s7) committed 5 files.

@@ -83,20 +83,6 @@ export async function installEnvTool(params: {
   });
 }
 
-export async function fetchServerInfo(params: {
-  host: string;
-  port: number;
-  username: string;
-  authType: string;
-  credential: string;
-  serverId?: string;
-}): Promise<ServerInfo> {
-  return invoke("fetch_server_info", {
-    host: params.host,
-    port: params.port,
-    username: params.username,
-    authType: params.authType,
-    credential: params.credential,
-    serverId: params.serverId ?? null,
-  });
+export async function fetchServerInfo(serverId: string): Promise<ServerInfo> {
+  return invoke("fetch_server_info", { serverId });
 }

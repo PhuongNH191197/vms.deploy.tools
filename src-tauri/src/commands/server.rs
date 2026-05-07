@@ -120,20 +120,21 @@ pub async fn test_connection(
 
 #[tauri::command]
 pub async fn fetch_server_info(
-    host: String,
-    port: u16,
-    username: String,
-    auth_type: String,
-    credential: String,
-    server_id: Option<String>,
+    server_id: String,
     state: State<'_, DbState>,
 ) -> Result<ServerInfo, String> {
-    let mut session = match auth_type.as_str() {
+    let row = server_repo::get_server_by_id(&state.0, &server_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let credential = crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+
+    let mut session = match row.auth_type.as_str() {
         "password" => {
-            SshSession::connect_password(&host, port, &username, &credential).await
+            SshSession::connect_password(&row.host, row.port as u16, &row.username, &credential).await
         }
         "key" => {
-            SshSession::connect_key(&host, port, &username, &credential, None).await
+            SshSession::connect_key(&row.host, row.port as u16, &row.username, &credential, None).await
         }
         _ => return Err("Invalid auth_type".into()),
     }
@@ -143,9 +144,7 @@ pub async fn fetch_server_info(
         .await
         .map_err(|e| e.to_string())?;
 
-    if let Some(id) = server_id {
-        let _ = server_repo::update_last_seen(&state.0, &id).await;
-    }
+    let _ = server_repo::update_last_seen(&state.0, &server_id).await;
 
     session.disconnect().await.map_err(|e| e.to_string())?;
 

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { X, Loader2, RefreshCw } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
+import { fetchServerInfo } from "@/lib/tauri/commands";
 import type { Server, ServerInfo } from "@/types";
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 }
 
 export default function ServerInfoPanel({ server, onClose }: Props) {
-  const { serverInfoMap } = useServerStore();
+  const { serverInfoMap, setServerInfo } = useServerStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,8 +24,8 @@ export default function ServerInfoPanel({ server, onClose }: Props) {
     setLoading(true);
     setError("");
     try {
-      // credential not stored in frontend — show message for password servers
-      throw new Error("Nhập lại credential để fetch thông tin server.");
+      const result = await fetchServerInfo(server.id);
+      setServerInfo(server.id, result);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -77,9 +78,8 @@ export default function ServerInfoPanel({ server, onClose }: Props) {
         )}
 
         {error && (
-          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-3">
+          <div className="text-xs text-destructive bg-destructive/10 rounded p-3">
             <p>{error}</p>
-            <p className="mt-1 text-xs opacity-60">Tính năng fetch info sẽ được kích hoạt khi có credential store.</p>
           </div>
         )}
 
