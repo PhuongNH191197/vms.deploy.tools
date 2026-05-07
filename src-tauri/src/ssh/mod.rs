@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use russh::{client, ChannelMsg, Disconnect};
 use russh::keys::key::PublicKey;
 use russh::keys::load_secret_key;
+use russh_sftp::client::SftpSession;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
@@ -125,6 +126,23 @@ impl SshSession {
         }
 
         Ok(output.trim().to_string())
+    }
+
+    pub async fn open_sftp(&mut self) -> Result<SftpSession, AppError> {
+        let channel = self
+            .session
+            .channel_open_session()
+            .await
+            .map_err(|e| AppError::Ssh(e.to_string()))?;
+
+        channel
+            .request_subsystem(true, "sftp")
+            .await
+            .map_err(|e| AppError::Ssh(e.to_string()))?;
+
+        SftpSession::new(channel.into_stream())
+            .await
+            .map_err(|e| AppError::Scp(e.to_string()))
     }
 
     pub async fn disconnect(mut self) -> Result<(), AppError> {
