@@ -65,6 +65,9 @@ pub async fn upload_file(
         );
     }
 
+    use tokio::io::AsyncWriteExt;
+    remote_file.shutdown().await.map_err(|e| AppError::Scp(e.to_string()))?;
+
     Ok(())
 }
 

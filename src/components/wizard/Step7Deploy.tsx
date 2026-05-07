@@ -6,7 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { useWizardStore } from "@/store/wizardStore";
 import { useServerStore } from "@/store/serverStore";
-import type { DeployStep, DeployStepStatus } from "@/store/wizardStore";
+import type { DeployStep, DeployStepStatus, ExternalServiceConfig } from "@/store/wizardStore";
 
 interface DeployEvent {
   step_id: string;
@@ -25,7 +25,7 @@ function StepBadge({ status }: { status: DeployStepStatus }) {
 }
 
 function buildDeploySteps(
-  selectedExternals: { name: string; displayName: string; source: string }[],
+  selectedExternals: ExternalServiceConfig[],
   apps: { name: string; source: string; gitUrl?: string; gitBranch?: string; tarServerPath?: string }[],
 ): DeployStep[] {
   const steps: DeployStep[] = [
@@ -148,19 +148,63 @@ export default function Step7Deploy() {
       appendLog(`Wrote ${rootPath}/vms.env`);
       updateDeployStep("vms_env", { status: "done" });
 
-      // Step 3: start externals
+      // Step 3: upload files then start externals
       if (selectedExternals.length > 0) {
-        const extCmds = selectedExternals.flatMap((svc) => {
-          const dir = `${rootPath}/external/${svc.name}`;
-          const cmds = [];
-          if (svc.source === "offline") {
-            cmds.push(`docker load < ${dir}/${svc.name}.tar 2>&1`);
+        updateDeployStep("externals", { status: "running" });
+        try {
+          for (const svc of selectedExternals) {
+            const dir = `${rootPath}/external/${svc.name}`;
+
+            // Upload .tar image for offline mode
+            if (svc.source === "offline" && svc.tarPath.trim()) {
+              const tarName = svc.tarPath.split(/[\\/]/).pop() ?? `${svc.name}.tar`;
+              appendLog(`↑ Upload ${tarName} → ${dir}/`);
+              await invoke("upload_path", {
+                host: server.host, port: server.port,
+                username: server.username, authType: server.auth_type, credential,
+                localPath: svc.tarPath,
+                remotePath: `${dir}/${tarName}`,
+                eventId: `${EVENT_ID}-tar-${svc.name}`,
+              });
+            }
+
+            // Upload compose folder (both online and offline)
+            if (svc.composeFolderPath.trim()) {
+              appendLog(`↑ Upload compose/${svc.name} → ${dir}/`);
+              await invoke("upload_path", {
+                host: server.host, port: server.port,
+                username: server.username, authType: server.auth_type, credential,
+                localPath: svc.composeFolderPath,
+                remotePath: dir,
+                eventId: `${EVENT_ID}-compose-${svc.name}`,
+              });
+            }
           }
-          cmds.push(`cd ${dir} && docker-compose pull 2>&1 || true`);
-          cmds.push(`cd ${dir} && docker-compose up -d 2>&1`);
-          return cmds;
-        });
-        await runStep("externals", extCmds);
+
+          // Build and run docker commands
+          const extCmds = selectedExternals.flatMap((svc) => {
+            const dir = `${rootPath}/external/${svc.name}`;
+            const cmds: string[] = [];
+            if (svc.source === "offline" && svc.tarPath.trim()) {
+              const tarName = svc.tarPath.split(/[\\/]/).pop() ?? `${svc.name}.tar`;
+              cmds.push(`docker load < ${dir}/${tarName} 2>&1`);
+            } else {
+              cmds.push(`cd ${dir} && docker-compose pull 2>&1 || true`);
+            }
+            cmds.push(`cd ${dir} && docker-compose up -d 2>&1`);
+            return cmds;
+          });
+
+          await invoke("run_deploy_step", {
+            host: server.host, port: server.port,
+            username: server.username, authType: server.auth_type, credential,
+            commands: extCmds, eventId: EVENT_ID, stepId: "externals",
+          });
+          updateDeployStep("externals", { status: "done" });
+        } catch (e) {
+          updateDeployStep("externals", { status: "failed", error: String(e) });
+          throw e;
+        }
       }
 
       // Step 4: deploy apps

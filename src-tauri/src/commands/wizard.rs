@@ -132,6 +132,7 @@ pub async fn write_vms_env(
     file.write_all(content.as_bytes())
         .await
         .map_err(|e| e.to_string())?;
+    file.shutdown().await.map_err(|e| e.to_string())?;
 
     sftp.close().await.ok();
     session.disconnect().await.ok();
@@ -169,6 +170,7 @@ pub async fn write_remote_file(
 
     use tokio::io::AsyncWriteExt;
     file.write_all(content.as_bytes()).await.map_err(|e| e.to_string())?;
+    file.shutdown().await.map_err(|e| e.to_string())?;
 
     sftp.close().await.ok();
     session.disconnect().await.ok();

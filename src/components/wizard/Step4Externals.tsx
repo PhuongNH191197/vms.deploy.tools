@@ -163,27 +163,27 @@ export default function Step4Externals() {
             )}
 
             {configSvc.source === "offline" && (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">.tar image path (local)</Label>
-                  <Input
-                    value={configSvc.tarPath}
-                    onChange={(e) => updateExternal(configSvc.name, { tarPath: e.target.value })}
-                    placeholder="C:\images\minio.tar"
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Folder chứa docker-compose.yml (local)</Label>
-                  <Input
-                    value={configSvc.composeFolderPath}
-                    onChange={(e) => updateExternal(configSvc.name, { composeFolderPath: e.target.value })}
-                    placeholder="C:\configs\minio\"
-                    className="h-8 text-sm"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs">.tar image path (local Windows)</Label>
+                <Input
+                  value={configSvc.tarPath}
+                  onChange={(e) => updateExternal(configSvc.name, { tarPath: e.target.value })}
+                  placeholder="C:\images\minio.tar"
+                  className="h-8 text-sm"
+                />
               </div>
             )}
+
+            <div className="space-y-1">
+              <Label className="text-xs">Folder chứa docker-compose.yml (local Windows)</Label>
+              <Input
+                value={configSvc.composeFolderPath}
+                onChange={(e) => updateExternal(configSvc.name, { composeFolderPath: e.target.value })}
+                placeholder="C:\configs\minio"
+                className="h-8 text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">Sẽ được upload lên server khi Deploy</p>
+            </div>
           </div>
         </>
       )}
