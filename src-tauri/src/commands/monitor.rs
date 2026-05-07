@@ -7,6 +7,8 @@ use tokio::time::Duration;
 use russh::ChannelMsg;
 use crate::error::AppError;
 use crate::ssh::SshSession;
+use crate::commands::server::DbState;
+use crate::db::metrics_repo::{self, MetricsPoint};
 
 // ── Cancellation registry ────────────────────────────────────────────────────
 
@@ -219,4 +221,32 @@ pub async fn docker_container_action(
 
     session.disconnect().await.ok();
     Ok(output)
+}
+
+/// Persist a metrics snapshot for a server (called from JS after each poll).
+#[tauri::command]
+pub async fn save_metrics_snapshot(
+    server_id: String,
+    cpu_percent: u32,
+    ram_percent: u32,
+    ram_used_mb: u64,
+    ram_total_mb: u64,
+    disk_percent: u32,
+    state: State<'_, DbState>,
+) -> Result<(), String> {
+    metrics_repo::save_snapshot(&state.0, &server_id, cpu_percent, ram_percent, ram_used_mb, ram_total_mb, disk_percent)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Return stored metrics history for a server (default: last 24h).
+#[tauri::command]
+pub async fn get_metrics_history(
+    server_id: String,
+    hours: Option<i64>,
+    state: State<'_, DbState>,
+) -> Result<Vec<MetricsPoint>, String> {
+    metrics_repo::get_history(&state.0, &server_id, hours.unwrap_or(24))
+        .await
+        .map_err(|e| e.to_string())
 }

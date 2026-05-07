@@ -10,13 +10,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Activity, Eye, EyeOff, Loader2, RefreshCw,
-  RotateCcw, Square, Play, MonitorDot,
+  RotateCcw, Square, Play, MonitorDot, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer,
+} from "recharts";
 import { useServerStore } from "@/store/serverStore";
 import { useMonitorStore } from "@/store/monitorStore";
+import { getMetricsHistory } from "@/lib/tauri/commands";
 import LogPanel from "@/components/LogPanel";
-import type { Server } from "@/types";
+import type { Server, MetricsPoint } from "@/types";
 
 interface ContainerInfo {
   name: string;
@@ -25,6 +30,107 @@ interface ContainerInfo {
   created: string;
   cpu_perc: string;
   mem_perc: string;
+}
+
+// ── Metrics history chart ─────────────────────────────────────────────────────
+
+function MetricsHistoryChart({ serverId }: { serverId: string }) {
+  const [open, setOpen] = useState(false);
+  const [hours, setHours] = useState(1);
+  const [data, setData] = useState<MetricsPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async (h = hours) => {
+    setLoading(true);
+    try {
+      const pts = await getMetricsHistory(serverId, h);
+      setData(pts);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggle = () => {
+    if (!open) load();
+    setOpen((v) => !v);
+  };
+
+  const changeRange = (h: number) => {
+    setHours(h);
+    load(h);
+  };
+
+  const chartData = data.map((p) => ({
+    time: p.recorded_at.slice(11, 16),
+    CPU: p.cpu_percent,
+    RAM: p.ram_percent,
+    Disk: p.disk_percent,
+  }));
+
+  return (
+    <div className="space-y-2">
+      <button
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={toggle}
+      >
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        Lịch sử metrics
+      </button>
+
+      {open && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            {([1, 6, 24] as const).map((h) => (
+              <Button
+                key={h}
+                size="sm"
+                variant={hours === h ? "default" : "ghost"}
+                className="h-6 text-xs px-2"
+                onClick={() => changeRange(h)}
+              >
+                {h}h
+              </Button>
+            ))}
+            <Button
+              size="sm" variant="ghost" className="h-6 w-6 p-0 ml-1"
+              onClick={() => load()} disabled={loading}
+            >
+              {loading ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+            </Button>
+            <span className="text-[10px] text-muted-foreground ml-1">{data.length} điểm</span>
+          </div>
+
+          {data.length === 0 && !loading && (
+            <p className="text-xs text-muted-foreground">Chưa có dữ liệu (monitor cần chạy ít nhất 1 chu kỳ).</p>
+          )}
+
+          {data.length > 0 && (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} unit="%" width={36} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: 11,
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 6,
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                <Line type="monotone" dataKey="CPU"  stroke="#3b82f6" dot={false} strokeWidth={1.5} />
+                <Line type="monotone" dataKey="RAM"  stroke="#a855f7" dot={false} strokeWidth={1.5} />
+                <Line type="monotone" dataKey="Disk" stroke="#f97316" dot={false} strokeWidth={1.5} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Per-server panel ─────────────────────────────────────────────────────────
@@ -169,6 +275,8 @@ function ServerPanel({ server }: ServerPanelProps) {
           <Loader2 size={12} className="animate-spin" />Loading metrics…
         </div>
       )}
+
+      <MetricsHistoryChart serverId={server.id} />
 
       <Separator />
 

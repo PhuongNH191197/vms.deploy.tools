@@ -1,5 +1,6 @@
 pub mod server_repo;
 pub mod deploy_repo;
+pub mod metrics_repo;
 
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::PathBuf;

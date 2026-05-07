@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { ServerMetrics, ServerStatus } from "@/types";
-import { getServerMetrics } from "@/lib/tauri/commands";
+import { getServerMetrics, saveMetricsSnapshot } from "@/lib/tauri/commands";
 
 interface SessionCredential {
   authType: string;
@@ -55,6 +55,14 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
             [serverId]: { metrics, status: calcStatus(metrics), lastUpdated: Date.now() },
           },
         }));
+        saveMetricsSnapshot({
+          serverId,
+          cpuPercent: metrics.cpu_percent,
+          ramPercent: metrics.ram_percent,
+          ramUsedMb: metrics.ram_used_mb,
+          ramTotalMb: metrics.ram_total_mb,
+          diskPercent: metrics.disk_percent,
+        }).catch(() => {});
       } catch {
         set((s) => ({
           entries: {

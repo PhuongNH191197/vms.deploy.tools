@@ -68,6 +68,17 @@ export interface ServerMetrics {
   disk_percent: number;
 }
 
+export interface MetricsPoint {
+  id: string;
+  server_id: string;
+  cpu_percent: number;
+  ram_percent: number;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  disk_percent: number;
+  recorded_at: string;
+}
+
 export interface ToolCheckResult {
   name: string;
   installed: boolean;

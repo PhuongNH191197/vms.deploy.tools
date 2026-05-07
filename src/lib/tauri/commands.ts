@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Server, ServerInfo, AddServerPayload, ServerMetrics, ToolCheckResult } from "@/types";
+import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult } from "@/types";
 
 export async function addServer(payload: AddServerPayload): Promise<string> {
   return invoke("add_server", { payload });
@@ -85,4 +85,29 @@ export async function installEnvTool(params: {
 
 export async function fetchServerInfo(serverId: string): Promise<ServerInfo> {
   return invoke("fetch_server_info", { serverId });
+}
+
+export async function saveMetricsSnapshot(params: {
+  serverId: string;
+  cpuPercent: number;
+  ramPercent: number;
+  ramUsedMb: number;
+  ramTotalMb: number;
+  diskPercent: number;
+}): Promise<void> {
+  return invoke("save_metrics_snapshot", {
+    serverId: params.serverId,
+    cpuPercent: params.cpuPercent,
+    ramPercent: params.ramPercent,
+    ramUsedMb: params.ramUsedMb,
+    ramTotalMb: params.ramTotalMb,
+    diskPercent: params.diskPercent,
+  });
+}
+
+export async function getMetricsHistory(
+  serverId: string,
+  hours?: number,
+): Promise<MetricsPoint[]> {
+  return invoke("get_metrics_history", { serverId, hours: hours ?? 24 });
 }
