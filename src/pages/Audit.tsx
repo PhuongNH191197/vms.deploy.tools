@@ -91,6 +91,55 @@ export default function Audit() {
     load("");
   };
 
+  const exportPDF = () => {
+    const rows = records.map((r) => `
+      <tr>
+        <td>${fmtDate(r.deployed_at)}</td>
+        <td>${r.server_name}</td>
+        <td>${r.module_name} @${r.module_version}</td>
+        <td>${r.action}</td>
+        <td>${r.status}</td>
+        <td>${r.operator_ip}<br/><small>${r.operator_host}</small></td>
+        <td style="font-size:9px;max-width:200px;overflow:hidden">${(r.log_output ?? "").slice(0, 200)}</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>VMS Audit Log</title>
+<style>
+  body{font-family:sans-serif;font-size:11px;padding:20px}
+  h1{font-size:14px;margin-bottom:2px}
+  p{font-size:10px;color:#666;margin-bottom:12px}
+  table{border-collapse:collapse;width:100%}
+  th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+  th{background:#f0f0f0;font-weight:600}
+  tr:nth-child(even){background:#fafafa}
+  small{color:#999}
+</style></head>
+<body>
+<h1>VMS Deploy Tool — Audit Log</h1>
+<p>Xuất: ${new Date().toLocaleString()} &nbsp;·&nbsp; ${records.length} records</p>
+<table>
+  <thead><tr>
+    <th>Thời gian</th><th>Server</th><th>Module</th>
+    <th>Action</th><th>Status</th><th>Operator</th><th>Log</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body></html>`;
+
+    const iframe = document.createElement("iframe");
+    iframe.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    iframe.contentWindow!.focus();
+    iframe.contentWindow!.print();
+    setTimeout(() => document.body.removeChild(iframe), 2000);
+  };
+
   const exportCSV = () => {
     const header = "deployed_at,server,module,version,action,status,operator_ip,operator_host";
     const rows = records.map((r) =>
@@ -182,12 +231,20 @@ export default function Audit() {
             <Button size="sm" type="submit" className="h-8 text-xs px-3">Go</Button>
           </form>
 
-          <Button
-            size="sm" variant="outline" className="h-8 text-xs ml-auto"
-            onClick={exportCSV} disabled={records.length === 0}
-          >
-            <Download size={12} className="mr-1" /> CSV
-          </Button>
+          <div className="flex gap-1 ml-auto">
+            <Button
+              size="sm" variant="outline" className="h-8 text-xs"
+              onClick={exportCSV} disabled={records.length === 0}
+            >
+              <Download size={12} className="mr-1" /> CSV
+            </Button>
+            <Button
+              size="sm" variant="outline" className="h-8 text-xs"
+              onClick={exportPDF} disabled={records.length === 0}
+            >
+              <Download size={12} className="mr-1" /> PDF
+            </Button>
+          </div>
         </div>
 
         {error && <p className="text-xs text-destructive mb-3">{error}</p>}
