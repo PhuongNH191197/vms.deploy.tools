@@ -177,7 +177,7 @@ STATUS: 🔄 IN PROGRESS
 NEXT: Viết src-tauri/src/ssh/mod.rs
 
 ## Progress Tracker
-- [x] S1: scaffold xong, đang bắt đầu SSH Core
+- [x] S1: SSH core + Server CRUD + UI DONE. Committed feat(s1).
 - [ ] S2: Server Dashboard + Env Check UI
 - [ ] S3: Wizard Bước 3-4 (Networks + Externals)
 - [ ] S4: ENV Config + vms.env generation
@@ -192,8 +192,8 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Scaffold hoàn chỉnh, tất cả dependencies đã cài
+LAST_ACTION: Sprint S1 hoàn thành — SSH core, server CRUD, UI AddServerDialog, Home page
 CURRENT_FILE: —
-NEXT_STEP: Viết SSH Core — src-tauri/src/ssh/mod.rs
+NEXT_STEP: Sprint S2 — T17 Server status polling (30s interval)
 BLOCKED_BY: —
-NOTES: npm + cargo đã fetch xong. TypeScript + Rust check pass.
+NOTES: tsc PASS, cargo check PASS. 24 files committed feat(s1). Session history: docs/tasks/
