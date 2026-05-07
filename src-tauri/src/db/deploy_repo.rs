@@ -3,6 +3,21 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::error::AppError;
 
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AuditRecord {
+    pub id: String,
+    pub server_id: String,
+    pub server_name: String,
+    pub module_name: String,
+    pub module_version: String,
+    pub action: String,
+    pub status: String,
+    pub operator_ip: String,
+    pub operator_host: String,
+    pub log_output: Option<String>,
+    pub deployed_at: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct DeployRecord {
     pub id: String,
@@ -111,6 +126,37 @@ pub async fn insert_snapshot(
     .execute(pool)
     .await?;
     Ok(id)
+}
+
+pub async fn get_audit_logs(
+    pool: &SqlitePool,
+    server_id: Option<&str>,
+    action: Option<&str>,
+    status: Option<&str>,
+    search: Option<&str>,
+) -> Result<Vec<AuditRecord>, AppError> {
+    let search_pat = search.map(|s| format!("%{s}%"));
+    let rows = sqlx::query_as::<_, AuditRecord>(
+        "SELECT dh.id, dh.server_id,
+                COALESCE(s.name, dh.server_id) AS server_name,
+                dh.module_name, dh.module_version, dh.action, dh.status,
+                dh.operator_ip, dh.operator_host, dh.log_output, dh.deployed_at
+         FROM deploy_history dh
+         LEFT JOIN servers s ON s.id = dh.server_id
+         WHERE (? IS NULL OR dh.server_id = ?)
+           AND (? IS NULL OR dh.action = ?)
+           AND (? IS NULL OR dh.status = ?)
+           AND (? IS NULL OR dh.module_name LIKE ? OR dh.log_output LIKE ?)
+         ORDER BY dh.deployed_at DESC
+         LIMIT 200"
+    )
+    .bind(server_id).bind(server_id)
+    .bind(action).bind(action)
+    .bind(status).bind(status)
+    .bind(search_pat.as_deref()).bind(search_pat.as_deref()).bind(search_pat.as_deref())
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
 }
 
 pub async fn get_snapshots_by_server(

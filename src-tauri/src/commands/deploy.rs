@@ -238,3 +238,23 @@ pub async fn rollback_deployment(
     session.disconnect().await.ok();
     Ok(())
 }
+
+/// Fetch audit log with optional filters.
+#[tauri::command]
+pub async fn get_audit_logs(
+    state: State<'_, DbState>,
+    server_id: Option<String>,
+    action: Option<String>,
+    status: Option<String>,
+    search: Option<String>,
+) -> Result<Vec<deploy_repo::AuditRecord>, String> {
+    deploy_repo::get_audit_logs(
+        &state.0,
+        server_id.as_deref(),
+        action.as_deref(),
+        status.as_deref(),
+        search.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())
+}

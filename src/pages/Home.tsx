@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Plus, Trash2, Info, Server, Circle } from "lucide-react";
+import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
 import { useMonitorStore } from "@/store/monitorStore";
 import AddServerDialog from "@/components/AddServerDialog";
@@ -23,6 +24,7 @@ function StatusDot({ status }: { status: ServerStatus }) {
 export default function Home() {
   const { servers, loading, fetchServers, removeServer } = useServerStore();
   const { entries } = useMonitorStore();
+  const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [infoServerId, setInfoServerId] = useState<string | null>(null);
 
@@ -43,14 +45,26 @@ export default function Home() {
     <div className="flex h-screen bg-background text-foreground">
       {/* Main panel */}
       <div className="flex-1 flex flex-col p-6 overflow-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Server size={22} className="text-primary" />
-            <h1 className="text-xl font-semibold">Server Dashboard</h1>
+        <div className="flex items-center gap-2 mb-6">
+          <Server size={22} className="text-primary" />
+          <h1 className="text-xl font-semibold">Server Dashboard</h1>
+          <div className="flex items-center gap-1 ml-auto">
+            <Button size="sm" variant="outline" onClick={() => navigate("/setup")}>
+              <Settings size={13} className="mr-1" /> Setup
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/update")}>
+              <RefreshCw size={13} className="mr-1" /> Update
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/monitor")}>
+              <MonitorDot size={13} className="mr-1" /> Monitor
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate("/audit")}>
+              <ClipboardList size={13} className="mr-1" /> Audit
+            </Button>
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus size={13} className="mr-1" /> Thêm Server
+            </Button>
           </div>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus size={15} className="mr-1" /> Thêm Server
-          </Button>
         </div>
 
         {loading && (
