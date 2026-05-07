@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList } from "lucide-react";
+import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList, Zap } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
 import { useMonitorStore } from "@/store/monitorStore";
 import AddServerDialog from "@/components/AddServerDialog";
 import ServerInfoPanel from "@/components/ServerInfoPanel";
+import BulkDeployDialog from "@/components/BulkDeployDialog";
 import type { Server as ServerType, ServerGroup, ServerStatus } from "@/types";
 
 function StatusDot({ status }: { status: ServerStatus }) {
@@ -27,10 +29,30 @@ export default function Home() {
   const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [infoServerId, setInfoServerId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeployOpen, setBulkDeployOpen] = useState(false);
 
   useEffect(() => {
     fetchServers();
   }, []);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const toggleSelectGroup = (groupServers: ServerType[]) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = groupServers.every((s) => next.has(s.id));
+      if (allSelected) groupServers.forEach((s) => next.delete(s.id));
+      else groupServers.forEach((s) => next.add(s.id));
+      return next;
+    });
+
+  const selectedServers = servers.filter((s) => selectedIds.has(s.id));
 
   const groups: ServerGroup[] = ["all", "production", "staging", "lab"];
 
@@ -49,6 +71,11 @@ export default function Home() {
           <Server size={22} className="text-primary" />
           <h1 className="text-xl font-semibold">Server Dashboard</h1>
           <div className="flex items-center gap-1 ml-auto">
+            {selectedIds.size > 0 && (
+              <Button size="sm" onClick={() => setBulkDeployOpen(true)}>
+                <Zap size={13} className="mr-1" /> Bulk Deploy ({selectedIds.size})
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => navigate("/setup")}>
               <Settings size={13} className="mr-1" /> Setup
             </Button>
@@ -94,6 +121,12 @@ export default function Home() {
                     <table className="w-full text-sm">
                       <thead className="border-b bg-muted/40">
                         <tr>
+                          <th className="w-8 px-2 py-2">
+                            <Checkbox
+                              checked={filtered(g).length > 0 && filtered(g).every((s) => selectedIds.has(s.id))}
+                              onCheckedChange={() => toggleSelectGroup(filtered(g))}
+                            />
+                          </th>
                           <th className="w-6 px-3 py-2" />
                           <th className="text-left px-4 py-2 font-medium">Tên</th>
                           <th className="text-left px-4 py-2 font-medium">Host</th>
@@ -110,6 +143,12 @@ export default function Home() {
                           const metrics = mon?.metrics;
                           return (
                           <tr key={server.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                            <td className="px-2 py-3">
+                              <Checkbox
+                                checked={selectedIds.has(server.id)}
+                                onCheckedChange={() => toggleSelect(server.id)}
+                              />
+                            </td>
                             <td className="px-3 py-3"><StatusDot status={status} /></td>
                             <td className="px-4 py-3 font-medium">{server.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{server.host}:{server.port}</td>
@@ -174,6 +213,15 @@ export default function Home() {
       )}
 
       <AddServerDialog open={addOpen} onOpenChange={setAddOpen} />
+
+      <BulkDeployDialog
+        open={bulkDeployOpen}
+        onOpenChange={(v) => {
+          setBulkDeployOpen(v);
+          if (!v) setSelectedIds(new Set());
+        }}
+        servers={selectedServers}
+      />
     </div>
   );
 }
