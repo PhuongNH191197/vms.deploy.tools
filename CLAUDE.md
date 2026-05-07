@@ -181,7 +181,7 @@ NEXT: Viết src-tauri/src/ssh/mod.rs
 - [x] S2: Server Dashboard + Env Check UI DONE. Committed feat(s2).
 - [x] S3: Wizard 7 steps + SCP module DONE. Committed feat(s3).
 - [x] S4: ENV Config + vms.env generation DONE. Committed feat(s4).
-- [ ] S5: App module deploy + Rollback
+- [x] S5: App deploy + Rollback + Update page DONE. Committed feat(s5).
 - [ ] S6: Monitor + Logs xterm.js
 - [ ] S7: Audit log + Multi-tab + Polish
 
@@ -192,8 +192,8 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Sprint S4 hoàn thành — Step5EnvConfig UI, envVars store, write_vms_env Rust command
+LAST_ACTION: Sprint S5 hoàn thành — Step6/7, deploy_repo, deploy commands, Update.tsx rollback
 CURRENT_FILE: —
-NEXT_STEP: Sprint S5 — App module deploy + Rollback
+NEXT_STEP: Sprint S6 — Monitor + Logs xterm.js
 BLOCKED_BY: —
-NOTES: tsc PASS, cargo check 0 errors 5 warnings. feat(s4) committed 4 files.
+NOTES: tsc PASS, cargo check 0 errors 6 warnings. feat(s5) committed 12 files.
