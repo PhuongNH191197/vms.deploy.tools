@@ -99,3 +99,42 @@ pub async fn upload_path(
 
     result.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn write_vms_env(
+    host: String,
+    port: u16,
+    username: String,
+    auth_type: String,
+    credential: String,
+    root_path: String,
+    content: String,
+) -> Result<(), String> {
+    let mut session = open_session(&host, port, &username, &auth_type, &credential)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Ensure root_path directory exists
+    session
+        .execute(&format!("mkdir -p {root_path}"))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let sftp = session.open_sftp().await.map_err(|e| e.to_string())?;
+    let remote_path = format!("{root_path}/vms.env");
+
+    let mut file = sftp
+        .create(&remote_path)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    use tokio::io::AsyncWriteExt;
+    file.write_all(content.as_bytes())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    sftp.close().await.ok();
+    session.disconnect().await.ok();
+
+    Ok(())
+}

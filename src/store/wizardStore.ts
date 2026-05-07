@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import type { ToolCheckResult } from "@/types";
 
+export interface EnvVar {
+  key: string;
+  value: string;
+}
+
 export interface ExternalServiceConfig {
   name: string;
   displayName: string;
@@ -36,6 +41,9 @@ interface WizardState {
   selectedExternals: ExternalServiceConfig[];
   rootPath: string;
 
+  // Step 5
+  envVars: Record<string, EnvVar[]>; // keyed by service name
+
   // Actions
   setStep: (n: number) => void;
   nextStep: () => void;
@@ -50,12 +58,16 @@ interface WizardState {
   removeExternal: (name: string) => void;
   updateExternal: (name: string, patch: Partial<ExternalServiceConfig>) => void;
   setRootPath: (path: string) => void;
+  setEnvVarsForService: (service: string, vars: EnvVar[]) => void;
+  addEnvVar: (service: string) => void;
+  updateEnvVar: (service: string, index: number, patch: Partial<EnvVar>) => void;
+  removeEnvVar: (service: string, index: number) => void;
   reset: () => void;
 }
 
 const DEFAULT: Pick<WizardState,
   "currentStep" | "selectedServerId" | "environment" | "credential" | "envCheckResults" |
-  "dockerNetworks" | "networkResults" | "selectedExternals" | "rootPath"
+  "dockerNetworks" | "networkResults" | "selectedExternals" | "rootPath" | "envVars"
 > = {
   currentStep: 1,
   selectedServerId: null,
@@ -66,6 +78,7 @@ const DEFAULT: Pick<WizardState,
   networkResults: [],
   selectedExternals: [],
   rootPath: "/opt/vms",
+  envVars: {},
 };
 
 export const useWizardStore = create<WizardState>((set) => ({
@@ -101,5 +114,35 @@ export const useWizardStore = create<WizardState>((set) => ({
     })),
 
   setRootPath: (path) => set({ rootPath: path }),
+
+  setEnvVarsForService: (service, vars) =>
+    set((s) => ({ envVars: { ...s.envVars, [service]: vars } })),
+
+  addEnvVar: (service) =>
+    set((s) => ({
+      envVars: {
+        ...s.envVars,
+        [service]: [...(s.envVars[service] ?? []), { key: "", value: "" }],
+      },
+    })),
+
+  updateEnvVar: (service, index, patch) =>
+    set((s) => ({
+      envVars: {
+        ...s.envVars,
+        [service]: (s.envVars[service] ?? []).map((v, i) =>
+          i === index ? { ...v, ...patch } : v
+        ),
+      },
+    })),
+
+  removeEnvVar: (service, index) =>
+    set((s) => ({
+      envVars: {
+        ...s.envVars,
+        [service]: (s.envVars[service] ?? []).filter((_, i) => i !== index),
+      },
+    })),
+
   reset: () => set({ ...DEFAULT }),
 }));
