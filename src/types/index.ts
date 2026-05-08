@@ -66,6 +66,7 @@ export interface ServerMetrics {
   disk_used_gb: number;
   disk_total_gb: number;
   disk_percent: number;
+  uptime_seconds?: number;
 }
 
 export interface MetricsPoint {
@@ -83,6 +84,11 @@ export interface ToolCheckResult {
   name: string;
   installed: boolean;
   version: string | null;
+}
+
+export interface ToolMeta {
+  name: string;
+  description: string;
 }
 
 export type ServerGroup = "production" | "staging" | "lab" | "all";

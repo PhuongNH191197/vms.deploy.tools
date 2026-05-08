@@ -6,8 +6,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Trash2, Download, Search, X } from "lucide-react";
+import { Play, Pause, Trash2, Download, Search, X, Terminal } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
+import { cn } from "@/lib/utils";
 
 interface LogLine {
   line: string;
@@ -47,11 +48,24 @@ export default function LogPanel({ container, conn, onClose }: Props) {
   useEffect(() => {
     if (!containerRef.current) return;
     const term = new XTerm({
-      theme: { background: "#0d1117", foreground: "#c9d1d9", cursor: "#58a6ff" },
-      fontFamily: "Consolas, 'Courier New', monospace",
-      fontSize: 12,
-      lineHeight: 1.3,
-      scrollback: 5000,
+      theme: { 
+        background: "#070B14", // deep navy base
+        foreground: "#E2E8F0", 
+        cursor: "#22D3EE",
+        black: "#000000",
+        red: "#F87171",
+        green: "#34D399",
+        yellow: "#FBBF24",
+        blue: "#818CF8",
+        magenta: "#A855F7",
+        cyan: "#22D3EE",
+        white: "#FFFFFF",
+        selectionBackground: "rgba(34, 211, 238, 0.2)"
+      },
+      fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+      fontSize: 13,
+      lineHeight: 1.4,
+      scrollback: 10000,
       convertEol: true,
     });
     const fit = new FitAddon();
@@ -68,6 +82,17 @@ export default function LogPanel({ container, conn, onClose }: Props) {
   const writeLine = useCallback((line: string) => {
     const term = termRef.current;
     if (!term) return;
+    
+    // Simple colorization based on content
+    let formatted = line;
+    if (line.toLowerCase().includes("error") || line.toLowerCase().includes("fail")) {
+      formatted = `\x1b[31m${line}\x1b[0m`; // Red
+    } else if (line.toLowerCase().includes("warn")) {
+      formatted = `\x1b[33m${line}\x1b[0m`; // Yellow
+    } else if (line.toLowerCase().includes("success") || line.toLowerCase().includes("done")) {
+      formatted = `\x1b[32m${line}\x1b[0m`; // Green
+    }
+
     if (search && !line.toLowerCase().includes(search.toLowerCase())) {
       term.write(`\x1b[2m${line}\x1b[0m\r\n`); // dim non-matching
     } else if (search) {
@@ -78,7 +103,7 @@ export default function LogPanel({ container, conn, onClose }: Props) {
       const after = line.slice(idx + search.length);
       term.write(`${before}\x1b[33;1m${match}\x1b[0m${after}\r\n`);
     } else {
-      term.write(line + "\r\n");
+      term.write(formatted + "\r\n");
     }
   }, [search]);
 
@@ -94,7 +119,8 @@ export default function LogPanel({ container, conn, onClose }: Props) {
     eventIdRef.current = `logs-${container}-${Date.now()}`;
     linesRef.current = [];
     termRef.current?.clear();
-    termRef.current?.write(`\x1b[36m--- ${container} (last ${tailN} lines) ---\x1b[0m\r\n`);
+    termRef.current?.write(`\x1b[38;5;13m>>> INITIALIZING STREAM FOR: ${container.toUpperCase()}\x1b[0m\r\n`);
+    termRef.current?.write(`\x1b[38;5;14m>>> RETRIEVING LAST ${tailN} LINES...\x1b[0m\r\n\r\n`);
 
     setStreaming(true);
     setPaused(false);
@@ -115,7 +141,7 @@ export default function LogPanel({ container, conn, onClose }: Props) {
       authType: conn.authType, credential: conn.credential,
       container, tail: tailN, eventId: eventIdRef.current,
     }).catch((e) => {
-      termRef.current?.write(`\r\n\x1b[31mError: ${e}\x1b[0m\r\n`);
+      termRef.current?.write(`\r\n\x1b[31m[CRITICAL ERROR]: ${e}\x1b[0m\r\n`);
       setStreaming(false);
     });
   }, [container, conn, writeLine]);
@@ -172,55 +198,77 @@ export default function LogPanel({ container, conn, onClose }: Props) {
   }, [search, writeLine]);
 
   return (
-    <div className="flex flex-col border rounded-lg overflow-hidden bg-[#0d1117]">
+    <div className="flex flex-col glass-card rounded-2xl overflow-hidden border-white/5 shadow-2xl h-full animate-fade-in">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-muted/5 border-b border-muted/20">
-        <span className="text-xs font-mono text-muted-foreground flex-shrink-0">{container}</span>
-        {streaming && <Badge className="bg-green-700 text-[10px] px-1 py-0">● live</Badge>}
-        {paused && <Badge variant="secondary" className="text-[10px] px-1 py-0">paused</Badge>}
+      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border-b border-white/[0.05]">
+        <div className="flex items-center gap-2 mr-2 shrink-0">
+           <Terminal size={14} className="text-df-purple" />
+           <span className="text-[11px] font-black text-df-text-primary uppercase tracking-widest">{container}</span>
+        </div>
 
-        <div className="flex items-center gap-1 ml-2">
+        <div className="flex items-center gap-2">
+          {streaming && <Badge className="badge-active text-[9px] px-2 py-0 h-5">LIVE</Badge>}
+          {paused && <Badge className="bg-df-orange/20 text-df-orange border-df-orange/30 text-[9px] px-2 py-0 h-5">PAUSED</Badge>}
+        </div>
+
+        <div className="h-4 w-px bg-white/10 mx-2" />
+
+        <div className="flex items-center gap-1">
           {TAIL_OPTIONS.map((t) => (
             <button
               key={t}
               onClick={() => handleTailChange(t)}
-              className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors
-                ${tail === t ? "border-primary text-primary" : "border-muted-foreground/30 text-muted-foreground hover:border-primary/50"}`}
+              className={cn(
+                "text-[9px] font-black tracking-widest px-2.5 py-1 rounded-lg border transition-all uppercase",
+                tail === t 
+                  ? "bg-df-cyan/10 border-df-cyan text-df-cyan shadow-neon-cyan/20" 
+                  : "bg-white/5 border-white/10 text-df-text-secondary hover:border-white/30"
+              )}
             >
-              {t}
+              {t}L
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-1 flex-1 max-w-xs ml-2">
-          <Search size={11} className="text-muted-foreground shrink-0" />
+        <div className="flex-1 max-w-xs relative ml-4">
+          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-df-text-secondary opacity-50" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="search…"
-            className="h-6 text-xs bg-transparent border-muted-foreground/30"
+            placeholder="Search logs..."
+            className="h-8 text-[11px] pl-9 pr-8 input-glass rounded-xl border-white/5"
           />
-          {search && <button onClick={() => setSearch("")}><X size={11} className="text-muted-foreground" /></button>}
+          {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-df-text-secondary hover:text-df-cyan"><X size={12} /></button>}
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handlePause} title={paused ? "Resume" : "Pause"}>
-            {paused ? <Play size={11} /> : <Pause size={11} />}
+          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handlePause} title={paused ? "Resume" : "Pause"}>
+            {paused ? <Play size={14} className="text-df-green" /> : <Pause size={14} className="text-df-orange" />}
           </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleClear} title="Clear">
-            <Trash2 size={11} />
+          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handleClear} title="Clear">
+            <Trash2 size={14} className="text-df-red" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleDownload} title="Download">
-            <Download size={11} />
+          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handleDownload} title="Download">
+            <Download size={14} className="text-df-cyan" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onClose} title="Close">
-            <X size={11} />
+          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl ml-2 hover:bg-df-red/20" onClick={onClose} title="Close">
+            <X size={16} className="text-df-text-secondary hover:text-df-red" />
           </Button>
         </div>
       </div>
 
-      {/* Terminal */}
-      <div ref={containerRef} className="h-64" style={{ background: "#0d1117" }} />
+      {/* Terminal Area */}
+      <div className="flex-1 min-h-[400px] p-2 bg-[#070B14] relative group">
+        <div ref={containerRef} className="h-full w-full" />
+        {/* Subtle Scanline Overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.02] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+      </div>
+
+      {/* Footer Status */}
+      <div className="px-4 py-2 border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
+         <span className="text-[9px] font-black text-df-text-secondary uppercase tracking-[0.2em] opacity-40 italic">Secure TTY Connection Established</span>
+         <span className="text-[9px] font-black text-df-cyan uppercase tracking-[0.2em]">{linesRef.current.length} lines cached</span>
+      </div>
     </div>
   );
 }

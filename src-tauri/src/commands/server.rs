@@ -153,15 +153,22 @@ pub async fn fetch_server_info(
 
 #[tauri::command]
 pub async fn get_server_metrics(
-    host: String,
-    port: u16,
-    username: String,
-    auth_type: String,
-    credential: String,
+    server_id: String,
+    state: State<'_, DbState>,
 ) -> Result<ServerMetrics, String> {
-    let mut session = match auth_type.as_str() {
-        "password" => SshSession::connect_password(&host, port, &username, &credential).await,
-        "key" => SshSession::connect_key(&host, port, &username, &credential, None).await,
+    let row = server_repo::get_server_by_id(&state.0, &server_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let credential = crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+
+    let mut session = match row.auth_type.as_str() {
+        "password" => {
+            SshSession::connect_password(&row.host, row.port as u16, &row.username, &credential).await
+        }
+        "key" => {
+            SshSession::connect_key(&row.host, row.port as u16, &row.username, &credential, None).await
+        }
         _ => return Err("Invalid auth_type".into()),
     }
     .map_err(|e| e.to_string())?;

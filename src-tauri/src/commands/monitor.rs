@@ -10,6 +10,18 @@ use crate::ssh::SshSession;
 use crate::commands::server::DbState;
 use crate::db::metrics_repo::{self, MetricsPoint};
 
+// ── Validation ───────────────────────────────────────────────────────────────
+
+fn validate_container_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Container name is empty".into());
+    }
+    if !name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.')) {
+        return Err(format!("Invalid container name '{name}': only [a-zA-Z0-9_.-] allowed"));
+    }
+    Ok(())
+}
+
 // ── Cancellation registry ────────────────────────────────────────────────────
 
 pub struct LogStreamState(pub Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>);
@@ -120,6 +132,7 @@ pub async fn stream_container_logs(
     tail: u32,
     event_id: String,
 ) -> Result<(), String> {
+    validate_container_name(&container)?;
     // Register cancel flag
     let cancel = Arc::new(AtomicBool::new(true));
     {
@@ -205,6 +218,7 @@ pub async fn docker_container_action(
     host: String, port: u16, username: String, auth_type: String, credential: String,
     container: String, action: String,
 ) -> Result<String, String> {
+    validate_container_name(&container)?;
     // Whitelist allowed actions
     let safe_action = match action.as_str() {
         "restart" | "stop" | "start" => action.as_str(),
@@ -237,6 +251,70 @@ pub async fn save_metrics_snapshot(
     metrics_repo::save_snapshot(&state.0, &server_id, cpu_percent, ram_percent, ram_used_mb, ram_total_mb, disk_percent)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_container_name;
+
+    // ── F18-F21: validate_container_name ──────────────────────────────────────
+
+    #[test]
+    fn test_valid_name_alphanumeric() {
+        assert!(validate_container_name("nginx01").is_ok());
+    }
+
+    #[test]
+    fn test_valid_name_with_allowed_specials() {
+        // dots, dashes, underscores all allowed
+        assert!(validate_container_name("my-app_v1.2").is_ok());
+        assert!(validate_container_name("a.b_c-d").is_ok());
+    }
+
+    #[test]
+    fn test_empty_name_rejected() {
+        let r = validate_container_name("");
+        assert!(r.is_err());
+        assert_eq!(r.unwrap_err(), "Container name is empty");
+    }
+
+    // NF01 – shell injection characters rejected
+    #[test]
+    fn test_semicolon_injection_rejected() {
+        assert!(validate_container_name("nginx; rm -rf /").is_err());
+    }
+
+    #[test]
+    fn test_pipe_injection_rejected() {
+        assert!(validate_container_name("nginx|bash").is_err());
+    }
+
+    #[test]
+    fn test_ampersand_injection_rejected() {
+        assert!(validate_container_name("nginx&evil").is_err());
+    }
+
+    #[test]
+    fn test_backtick_injection_rejected() {
+        assert!(validate_container_name("nginx`whoami`").is_err());
+    }
+
+    #[test]
+    fn test_dollar_injection_rejected() {
+        assert!(validate_container_name("nginx$(id)").is_err());
+    }
+
+    #[test]
+    fn test_space_rejected() {
+        assert!(validate_container_name("nginx app").is_err());
+    }
+
+    // NF02 – error message includes the invalid name
+    #[test]
+    fn test_error_message_includes_name() {
+        let err = validate_container_name("bad name!").unwrap_err();
+        assert!(err.contains("bad name!"), "error message should quote the bad name");
+    }
 }
 
 /// Return stored metrics history for a server (default: last 24h).

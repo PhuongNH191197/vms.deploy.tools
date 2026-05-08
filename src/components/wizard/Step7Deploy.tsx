@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useWizardStore } from "@/store/wizardStore";
 import { useServerStore } from "@/store/serverStore";
 import type { DeployStep, DeployStepStatus, ExternalServiceConfig } from "@/store/wizardStore";
+import { generateCombinedCompose } from "@/lib/composeGenerator";
 
 interface DeployEvent {
   step_id: string;
@@ -48,7 +49,7 @@ function buildDeploySteps(
 export default function Step7Deploy() {
   const {
     selectedServerId, credential, rootPath,
-    selectedExternals, apps, envVars,
+    selectedExternals, apps, envVars, dockerNetworks,
     deploySteps, setDeploySteps, updateDeployStep,
     prevStep, reset,
   } = useWizardStore();
@@ -209,6 +210,16 @@ export default function Step7Deploy() {
 
       // Step 4: deploy apps
       if (apps.length > 0) {
+        // Auto-upload combined docker-compose.yml (user may have skipped Step6 save button)
+        const composeContent = generateCombinedCompose(apps, dockerNetworks, rootPath);
+        await invoke("write_remote_file", {
+          host: server.host, port: server.port,
+          username: server.username, authType: server.auth_type, credential,
+          remotePath: `${rootPath}/docker-compose.yml`,
+          content: composeContent,
+        });
+        appendLog(`Wrote ${rootPath}/docker-compose.yml`);
+
         const appCmds = apps.flatMap((app) => {
           const slug = app.name.replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
           const dir = `${rootPath}/apps/${slug}`;

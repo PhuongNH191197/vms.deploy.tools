@@ -106,7 +106,7 @@ export default function Step3Networks() {
 
       <div className="flex justify-between pt-2">
         <Button variant="ghost" onClick={prevStep}>← Quay lại</Button>
-        <Button onClick={nextStep} disabled={!allOk && networkResults.length === 0}>
+        <Button onClick={nextStep} disabled={validInputs.length > 0 && !allOk}>
           Tiếp theo →
         </Button>
       </div>

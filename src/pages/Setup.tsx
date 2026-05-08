@@ -1,4 +1,4 @@
-import { Rocket } from "lucide-react";
+import { useState, useEffect } from "react";
 import StepWizard from "@/components/StepWizard";
 import Step1Connect from "@/components/wizard/Step1Connect";
 import Step2EnvCheck from "@/components/wizard/Step2EnvCheck";
@@ -24,20 +24,35 @@ function StepContent({ step }: { step: number }) {
 
 export default function Setup() {
   const { currentStep } = useWizardStore();
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  useEffect(() => {
+    const mainElement = document.getElementById('main-content');
+    const handleScroll = () => {
+      setScrollOffset(mainElement?.scrollTop ?? 0);
+    };
+    mainElement?.addEventListener('scroll', handleScroll);
+    return () => mainElement?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const opacity = Math.min(scrollOffset / 100, 0.85);
+  const blur = Math.min(scrollOffset / 5, 20);
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
-      <div className="flex-1 flex flex-col p-6 overflow-auto max-w-3xl mx-auto w-full">
-        <div className="flex items-center gap-2 mb-6">
-          <Rocket size={22} className="text-primary" />
-          <h1 className="text-xl font-semibold">Deploy Wizard</h1>
-        </div>
-
-        <div className="mb-8">
+    <div className="flex flex-col h-full animate-fade-in">
+      <div className="flex-1 flex flex-col w-full">
+        <div 
+          className="sticky top-[108px] z-20 py-4 -mx-10 px-20 transition-all duration-500 ease-out border-b border-white/[0.01] mb-8"
+          style={{ 
+            backgroundColor: scrollOffset > 0 ? `rgba(10, 18, 36, ${opacity})` : 'transparent',
+            backdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
+            WebkitBackdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
+          }}
+        >
           <StepWizard current={currentStep} />
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 max-w-4xl w-full animate-fade-in-up">
           <StepContent step={currentStep} />
         </div>
       </div>

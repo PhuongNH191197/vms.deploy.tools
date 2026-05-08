@@ -7,19 +7,22 @@ import Update from "./pages/Update";
 import Monitor from "./pages/Monitor";
 import Audit from "./pages/Audit";
 import Templates from "./pages/Templates";
+import Layout from "./components/Layout";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/setup" element={<Setup />} />
-        <Route path="/update" element={<Update />} />
-        <Route path="/monitor" element={<Monitor />} />
-        <Route path="/audit" element={<Audit />} />
-        <Route path="/templates" element={<Templates />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/setup" element={<Setup />} />
+          <Route path="/update" element={<Update />} />
+          <Route path="/monitor" element={<Monitor />} />
+          <Route path="/audit" element={<Audit />} />
+          <Route path="/templates" element={<Templates />} />
+        </Routes>
+      </Layout>
     </BrowserRouter>
   </React.StrictMode>,
 );

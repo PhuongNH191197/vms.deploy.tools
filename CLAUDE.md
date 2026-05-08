@@ -191,34 +191,45 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Bug fix session — tests, SFTP flush, Wizard upload compose/tar
+LAST_ACTION: Testing wizard Step1→Step7 với Docker server 127.0.0.1:2222 — fix loạt bugs UX + install reliability
 CURRENT_FILE: —
-NEXT_STEP: Test thực tế Step4→Step7 deploy với server Docker 127.0.0.1:2222 (root/Elcom@123)
+NEXT_STEP: Test tiếp Step3→Step7 end-to-end (Step1+Step2 đã pass). Cần build lại app trước khi test (có thay đổi Rust).
 BLOCKED_BY: —
-NOTES: tsc 0 errors, cargo check 0 errors 4 pre-existing warnings. 5 commits sau P3.
+NOTES: tsc 0 errors, cargo check 0 errors 4 pre-existing warnings. Chưa commit session hôm nay.
 
-### Bugs đã fix trong session này:
-1. **Step2 EnvCheck sai kết quả** — thêm `command -v` gate vào check_command(), tool missing → empty output → installed=false
-2. **Install tool báo Done nhưng chưa cài** — fix: root detection (bỏ sudo -n cho root), dùng `&&`/`||` thay `;`, thêm DEBIAN_FRONTEND=noninteractive
-3. **Tool list cứng trong frontend** — chuyển sang backend-driven: `list_supported_tools()` Rust command, Step2 load dynamic từ API, checkbox UI 2-col
-4. **Nút "← Home" thiếu ở Setup page** — thêm vào header Setup.tsx
-5. **docker-compose.yml không upload** — composeFolderPath collected ở Step4 nhưng KHÔNG BAO GIỜ được invoke("upload_path") trong Step7 → docker-compose up -d chạy trên dir rỗng. FIX: Step7 upload tar + compose trước khi chạy docker commands
-6. **tarPath dùng sai** — Step7 dùng hardcoded `${svc.name}.tar` thay vì filename thực từ tarPath
-7. **composeFolderPath chỉ show cho offline** — online mode cũng cần compose file, đã move ra ngoài if-block
-8. **SFTP file không flush** — thêm `file.shutdown().await` sau write_all trong write_vms_env, write_remote_file, scp::upload_file
+### Test environment (Docker server):
+- Container: `vms-test-server` → `127.0.0.1:2222`, root/Elcom@123
+- Image: rastasheep/ubuntu-sshd:18.04 + docker socket mount + docker CLI v20.10 + docker-compose v5.1.3
+- Compose test file: `C:\test-vms\minio\docker-compose.yml`
+- Start container nếu tắt: `docker start vms-test-server`
 
-### Files đã tạo mới trong session này:
-- src/lib/csvExport.ts — pure CSV utility + 19 Vitest tests
-- src/lib/csvExport.test.ts
-- docs/HUONG_DAN_SU_DUNG.md — Vietnamese A-Z user manual
-- src-tauri/src/ssh/mod.rs — integration tests (14 tests, #[ignore])
+### Bugs đã fix SESSION HÔM NAY (2026-05-08):
+1. **Step3 không skip được** — `disabled={!allOk && networkResults.length === 0}` → `disabled={validInputs.length > 0 && !allOk}`
+2. **Step4 không skip được** — bỏ `disabled={selected.length === 0}`
+3. **Step7 không upload docker-compose.yml cho apps** — extract `generateCombinedCompose` → `src/lib/composeGenerator.ts`, Step7 auto-upload trước khi chạy app commands
+4. **Step2 Install All chạy parallel** — rewrite hoàn toàn: sequential `for...of await`, log panel tích lũy, per-tool recheck ngay sau install → checkmark xanh tức thì
+5. **install_env_tool luôn return Ok(()) dù fail** — giờ return `Err` khi output chứa `__ERROR__` → frontend log `✗ failed` đúng
+6. **dpkg lock khi install** — Ubuntu 18.04 background `unattended-upgrades` giữ lock → fix: `apt_retry()` dùng `flock -w 60s` chờ lock free thay vì kill process
+7. **apt-get update chạy N lần** — tách thành `run_apt_update` Tauri command, chạy 1 lần trước toàn bộ install loop; mỗi tool chỉ `apt-get install`
 
-### Tests đã thêm:
-- env_check.rs: 16 unit tests (check_command, install_command, serde)
-- ssh/server_info.rs: 8 tests parse_ram/parse_disk
-- ssh/metrics.rs: 9 tests parse_ram/parse_disk
-- monitor.rs: 10 tests validate_container_name
-- db/server_repo.rs: 7 tests
-- db/deploy_repo.rs: 13 tests
-- templates.rs: 8 tests + bug fix (serde_default)
-- ssh/mod.rs: 14 integration tests (#[ignore])
+### Files thay đổi SESSION HÔM NAY:
+- `src/components/wizard/Step2EnvCheck.tsx` — rewrite hoàn toàn (sequential install, real-time log, per-tool recheck)
+- `src/components/wizard/Step3Networks.tsx` — fix skip condition
+- `src/components/wizard/Step4Externals.tsx` — bỏ mandatory disabled
+- `src/components/wizard/Step7Deploy.tsx` — auto-upload compose cho apps, import composeGenerator
+- `src/components/wizard/Step6Apps.tsx` — import từ composeGenerator thay vì define local
+- `src/lib/composeGenerator.ts` — NEW: shared generateCombinedCompose utility
+- `src/lib/tauri/commands.ts` — thêm `runAptUpdate`
+- `src-tauri/src/commands/env_check.rs` — apt_retry(), apt_update_cmd(), run_apt_update command, install_env_tool return Err on fail, install_command return Option<String>
+- `src-tauri/src/lib.rs` — register run_apt_update
+- `build-release.bat` — NEW: one-click build .msi + .exe
+
+### Bugs đã fix SESSION TRƯỚC (tham khảo):
+1. Step2 EnvCheck sai kết quả — `command -v` gate
+2. Install tool báo Done nhưng chưa cài — root detection, DEBIAN_FRONTEND
+3. Tool list cứng frontend → backend-driven list_supported_tools()
+4. Nút "← Home" thiếu ở Setup page
+5. docker-compose.yml không upload — Step7 upload tar + compose trước docker commands
+6. tarPath hardcoded sai
+7. composeFolderPath chỉ show offline
+8. SFTP file không flush — file.shutdown().await

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult } from "@/types";
+import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult, ToolMeta } from "@/types";
 
 export async function addServer(payload: AddServerPayload): Promise<string> {
   return invoke("add_server", { payload });
@@ -29,20 +29,8 @@ export async function testConnection(params: {
   });
 }
 
-export async function getServerMetrics(params: {
-  host: string;
-  port: number;
-  username: string;
-  authType: string;
-  credential: string;
-}): Promise<ServerMetrics> {
-  return invoke("get_server_metrics", {
-    host: params.host,
-    port: params.port,
-    username: params.username,
-    authType: params.authType,
-    credential: params.credential,
-  });
+export async function getServerMetrics(serverId: string): Promise<ServerMetrics> {
+  return invoke("get_server_metrics", { serverId });
 }
 
 export async function checkEnvTools(params: {
@@ -79,6 +67,28 @@ export async function installEnvTool(params: {
     authType: params.authType,
     credential: params.credential,
     tool: params.tool,
+    eventId: params.eventId,
+  });
+}
+
+export async function listSupportedTools(): Promise<ToolMeta[]> {
+  return invoke("list_supported_tools");
+}
+
+export async function runAptUpdate(params: {
+  host: string;
+  port: number;
+  username: string;
+  authType: string;
+  credential: string;
+  eventId: string;
+}): Promise<void> {
+  return invoke("run_apt_update", {
+    host: params.host,
+    port: params.port,
+    username: params.username,
+    authType: params.authType,
+    credential: params.credential,
     eventId: params.eventId,
   });
 }

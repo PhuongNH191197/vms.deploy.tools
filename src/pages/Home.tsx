@@ -1,230 +1,173 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, Plus, Trash2, Info, Server, Circle, Settings, RefreshCw, MonitorDot, ClipboardList, Zap, FolderGit2 } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Loader2, Plus } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
 import { useMonitorStore } from "@/store/monitorStore";
 import AddServerDialog from "@/components/AddServerDialog";
 import ServerInfoPanel from "@/components/ServerInfoPanel";
-import BulkDeployDialog from "@/components/BulkDeployDialog";
+import ServerCard from "@/components/ServerCard";
 import type { Server as ServerType, ServerGroup, ServerStatus } from "@/types";
 
-function StatusDot({ status }: { status: ServerStatus }) {
-  const colors: Record<ServerStatus, string> = {
-    online: "text-green-500",
-    warning: "text-yellow-400",
-    offline: "text-red-500",
-    unknown: "text-muted-foreground",
-  };
-  return <Circle size={10} className={`fill-current ${colors[status]}`} />;
-}
+/* ── Demo data matching the reference image exactly ── */
+const DEMO_SERVERS: ServerType[] = [
+  { id: "demo-1", name: "Web-Server-01", host: "10.0.1.10", port: 22, username: "admin", auth_type: "key", group_name: "production", last_seen: null },
+  { id: "demo-2", name: "API-Gateway-03", host: "10.0.1.30", port: 22, username: "admin", auth_type: "key", group_name: "production", last_seen: null },
+  { id: "demo-3", name: "Database-Cluster-02", host: "10.0.2.10", port: 22, username: "admin", auth_type: "key", group_name: "production", last_seen: null },
+  { id: "demo-4", name: "Load-Balancer-01", host: "10.0.1.50", port: 22, username: "admin", auth_type: "key", group_name: "production", last_seen: null },
+  { id: "demo-5", name: "Caching-Server-01", host: "10.0.3.10", port: 22, username: "admin", auth_type: "key", group_name: "staging", last_seen: null },
+  { id: "demo-6", name: "Build-Node-04", host: "10.0.4.10", port: 22, username: "admin", auth_type: "key", group_name: "lab", last_seen: null },
+];
+
+const DEMO_METRICS: Record<string, { cpu_percent: number; ram_percent: number; disk_percent: number; uptime: string }> = {
+  "demo-1": { cpu_percent: 78, ram_percent: 62, disk_percent: 45, uptime: "34 days" },
+  "demo-2": { cpu_percent: 55, ram_percent: 71, disk_percent: 45, uptime: "39 days" },
+  "demo-3": { cpu_percent: 81, ram_percent: 67, disk_percent: 45, uptime: "34 days" },
+  "demo-4": { cpu_percent: 42, ram_percent: 77, disk_percent: 45, uptime: "34 days" },
+  "demo-5": { cpu_percent: 52, ram_percent: 62, disk_percent: 25, uptime: "18 days" },
+  "demo-6": { cpu_percent: 82, ram_percent: 72, disk_percent: 45, uptime: "34 days" },
+};
 
 export default function Home() {
-  const { servers, loading, fetchServers, removeServer } = useServerStore();
+  const { servers, loading, fetchServers } = useServerStore();
   const { entries } = useMonitorStore();
-  const navigate = useNavigate();
   const [addOpen, setAddOpen] = useState(false);
   const [infoServerId, setInfoServerId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeployOpen, setBulkDeployOpen] = useState(false);
+
+  const { startPolling, stopAll } = useMonitorStore();
 
   useEffect(() => {
     fetchServers();
+    return () => stopAll();
   }, []);
 
-  const toggleSelect = (id: string) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  // Tự động bắt đầu polling khi có danh sách server
+  useEffect(() => {
+    if (servers.length > 0) {
+      servers.forEach(s => {
+        // Lưu ý: Trong thực tế, credential (password) thường được lưu trong một store bảo mật
+        // Ở đây chúng ta giả định startPolling sẽ lấy từ credentials store nếu đã được set
+        startPolling(s.id, s.host, s.port, s.username);
+      });
+    }
+  }, [servers]);
 
-  const toggleSelectGroup = (groupServers: ServerType[]) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = groupServers.every((s) => next.has(s.id));
-      if (allSelected) groupServers.forEach((s) => next.delete(s.id));
-      else groupServers.forEach((s) => next.add(s.id));
-      return next;
-    });
-
-  const selectedServers = servers.filter((s) => selectedIds.has(s.id));
+  /* Use real servers if available, otherwise show demo */
+  const displayServers = servers.length > 0 ? servers : DEMO_SERVERS;
+  const isDemo = servers.length === 0;
 
   const groups: ServerGroup[] = ["all", "production", "staging", "lab"];
 
   const filtered = (group: ServerGroup): ServerType[] =>
-    group === "all" ? servers : servers.filter((s) => s.group_name === group);
+    group === "all" ? displayServers : displayServers.filter((s) => s.group_name === group);
 
   const groupCount = (group: ServerGroup) => filtered(group).length;
 
-  const infoServer = servers.find((s) => s.id === infoServerId) ?? null;
+  const infoServer = displayServers.find((s) => s.id === infoServerId) ?? null;
+
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  useEffect(() => {
+    const mainElement = document.getElementById('main-content');
+    const handleScroll = () => {
+      setScrollOffset(mainElement?.scrollTop ?? 0);
+    };
+    mainElement?.addEventListener('scroll', handleScroll);
+    return () => mainElement?.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const opacity = Math.min(scrollOffset / 100, 0.85);
+  const blur = Math.min(scrollOffset / 5, 20);
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      {/* Main panel */}
-      <div className="flex-1 flex flex-col p-6 overflow-auto">
-        <div className="flex items-center gap-2 mb-6">
-          <Server size={22} className="text-primary" />
-          <h1 className="text-xl font-semibold">Server Dashboard</h1>
-          <div className="flex items-center gap-1 ml-auto">
-            {selectedIds.size > 0 && (
-              <Button size="sm" onClick={() => setBulkDeployOpen(true)}>
-                <Zap size={13} className="mr-1" /> Bulk Deploy ({selectedIds.size})
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => navigate("/setup")}>
-              <Settings size={13} className="mr-1" /> Setup
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/update")}>
-              <RefreshCw size={13} className="mr-1" /> Update
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/monitor")}>
-              <MonitorDot size={13} className="mr-1" /> Monitor
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/audit")}>
-              <ClipboardList size={13} className="mr-1" /> Audit
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => navigate("/templates")}>
-              <FolderGit2 size={13} className="mr-1" /> Templates
-            </Button>
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus size={13} className="mr-1" /> Thêm Server
-            </Button>
-          </div>
+    <div className="flex flex-col">
+      <Tabs defaultValue="all" className="w-full">
+        <div 
+          className="flex items-center justify-between mb-8 sticky top-[108px] z-20 py-4 -mx-10 px-20 transition-all duration-500 ease-out border-b border-white/[0.01]"
+          style={{ 
+            backgroundColor: scrollOffset > 0 ? `rgba(10, 18, 36, ${opacity})` : 'transparent',
+            backdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
+            WebkitBackdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
+          }}
+        >
+          <TabsList className="bg-white/[0.02] border border-white/5 p-1 rounded-xl">
+            {groups.map((g) => (
+              <TabsTrigger
+                key={g}
+                value={g}
+                className="capitalize rounded-lg px-4 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-df-cyan/10 data-[state=active]:text-df-cyan transition-all duration-400 border border-transparent data-[state=active]:border-df-cyan/20"
+              >
+                {g}
+                <span className="ml-2 opacity-30">
+                  {groupCount(g)}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <Button
+            onClick={() => setAddOpen(true)}
+            className="bg-gradient-to-r from-[#00F2FF] to-[#00B4D8] text-[#05080F] rounded-lg px-4 h-9 text-[10px] font-black uppercase tracking-[0.15em] shadow-[0_0_20px_rgba(0,242,255,0.3)] hover:shadow-[0_0_30px_rgba(0,242,255,0.5)] transition-all duration-300 border-0"
+          >
+            <Plus size={14} className="mr-2 stroke-[3px]" /> THÊM SERVER
+          </Button>
         </div>
 
         {loading && (
-          <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center py-32 space-y-4">
+            <Loader2
+              className="animate-spin text-df-cyan"
+              size={48}
+            />
+            <span className="text-df-text-secondary font-black tracking-widest uppercase text-xs">Loading Infrastructure...</span>
           </div>
         )}
 
-        {!loading && (
-          <Tabs defaultValue="all">
-            <TabsList className="mb-4">
-              {groups.map((g) => (
-                <TabsTrigger key={g} value={g} className="capitalize">
-                  {g} <span className="ml-1 text-xs text-muted-foreground">({groupCount(g)})</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+        {!loading &&
+          groups.map((g) => (
+            <TabsContent key={g} value={g} className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                {filtered(g).map((server, idx) => {
+                  const mon = entries[server.id];
+                  const status: ServerStatus = isDemo
+                    ? "online"
+                    : (mon?.status ?? "unknown");
 
-            {groups.map((g) => (
-              <TabsContent key={g} value={g}>
-                {filtered(g).length === 0 ? (
-                  <p className="text-muted-foreground text-sm py-8 text-center">
-                    Chưa có server nào trong nhóm này.
-                  </p>
-                ) : (
-                  <div className="rounded-md border">
-                    <table className="w-full text-sm">
-                      <thead className="border-b bg-muted/40">
-                        <tr>
-                          <th className="w-8 px-2 py-2">
-                            <Checkbox
-                              checked={filtered(g).length > 0 && filtered(g).every((s) => selectedIds.has(s.id))}
-                              onCheckedChange={() => toggleSelectGroup(filtered(g))}
-                            />
-                          </th>
-                          <th className="w-6 px-3 py-2" />
-                          <th className="text-left px-4 py-2 font-medium">Tên</th>
-                          <th className="text-left px-4 py-2 font-medium">Host</th>
-                          <th className="text-left px-4 py-2 font-medium">Nhóm</th>
-                          <th className="text-left px-4 py-2 font-medium w-28">CPU</th>
-                          <th className="text-left px-4 py-2 font-medium w-28">RAM</th>
-                          <th className="text-right px-4 py-2 font-medium">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filtered(g).map((server) => {
-                          const mon = entries[server.id];
-                          const status: ServerStatus = mon?.status ?? "unknown";
-                          const metrics = mon?.metrics;
-                          return (
-                          <tr key={server.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                            <td className="px-2 py-3">
-                              <Checkbox
-                                checked={selectedIds.has(server.id)}
-                                onCheckedChange={() => toggleSelect(server.id)}
-                              />
-                            </td>
-                            <td className="px-3 py-3"><StatusDot status={status} /></td>
-                            <td className="px-4 py-3 font-medium">{server.name}</td>
-                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{server.host}:{server.port}</td>
-                            <td className="px-4 py-3">
-                              <Badge variant="outline" className="capitalize text-xs">{server.group_name}</Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                              {metrics ? (
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground">{metrics.cpu_percent}%</div>
-                                  <Progress value={metrics.cpu_percent} className="h-1" />
-                                </div>
-                              ) : <span className="text-xs text-muted-foreground">—</span>}
-                            </td>
-                            <td className="px-4 py-3">
-                              {metrics ? (
-                                <div className="space-y-1">
-                                  <div className="text-xs text-muted-foreground">{metrics.ram_percent}%</div>
-                                  <Progress value={metrics.ram_percent} className="h-1" />
-                                </div>
-                              ) : <span className="text-xs text-muted-foreground">—</span>}
-                            </td>
-                            <td className="px-4 py-3 text-right flex justify-end gap-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Server Info"
-                                onClick={() => setInfoServerId(server.id)}
-                              >
-                                <Info size={14} />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Xóa"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => {
-                                  if (confirm(`Xóa server "${server.name}"?`)) removeServer(server.id);
-                                }}
-                              >
-                                <Trash2 size={14} />
-                              </Button>
-                            </td>
-                          </tr>
-                        );})}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-      </div>
+                  // Fix: Luôn gán dữ liệu Demo nếu đang ở chế độ Demo
+                  const metrics = isDemo
+                    ? DEMO_METRICS[server.id] || { cpu_percent: 0, ram_percent: 0, disk_percent: 0, uptime: "N/A" }
+                    : mon?.metrics;
 
-      {/* Side panel: Server Info */}
-      {infoServer && (
-        <ServerInfoPanel
-          server={infoServer}
-          onClose={() => setInfoServerId(null)}
-        />
-      )}
+                  return (
+                    <ServerCard
+                      key={server.id}
+                      server={server}
+                      status={status}
+                      metrics={metrics as any}
+                      onInfo={setInfoServerId}
+                      index={idx}
+                    />
+                  );
+                })}
+              </div>
+            </TabsContent>
+          ))}
+      </Tabs>
+
+      {/* ── Modal Chi tiết Server ── */}
+      <Dialog open={!!infoServerId} onOpenChange={(open) => !open && setInfoServerId(null)}>
+        <DialogContent className="max-w-2xl bg-transparent border-0 p-0 shadow-none outline-none">
+          {infoServer && (
+            <ServerInfoPanel 
+              server={servers.find(s => s.id === infoServerId)!} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AddServerDialog open={addOpen} onOpenChange={setAddOpen} />
-
-      <BulkDeployDialog
-        open={bulkDeployOpen}
-        onOpenChange={(v) => {
-          setBulkDeployOpen(v);
-          if (!v) setSelectedIds(new Set());
-        }}
-        servers={selectedServers}
-      />
     </div>
   );
 }
+

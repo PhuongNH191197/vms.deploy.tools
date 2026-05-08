@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Eye, EyeOff, ChevronDown, ChevronRight, Loader2, CheckCircle2, XCircle, Circle } from "lucide-react";
+import { Eye, EyeOff, ChevronDown, ChevronRight, Loader2, CheckCircle2, XCircle, Circle, Rocket, ShieldCheck, Terminal } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Server } from "@/types";
+import { cn } from "@/lib/utils";
 
 type TaskStatus = "pending" | "running" | "success" | "failed";
 
@@ -32,22 +33,22 @@ interface BulkDeployDialogProps {
 
 function StatusIcon({ status }: { status: TaskStatus }) {
   switch (status) {
-    case "pending": return <Circle size={14} className="text-muted-foreground" />;
-    case "running": return <Loader2 size={14} className="animate-spin text-blue-400" />;
-    case "success": return <CheckCircle2 size={14} className="text-green-500" />;
-    case "failed":  return <XCircle size={14} className="text-red-500" />;
+    case "pending": return <Circle size={14} className="text-white/20" />;
+    case "running": return <Loader2 size={14} className="animate-spin text-df-cyan" />;
+    case "success": return <CheckCircle2 size={14} className="text-df-green" />;
+    case "failed":  return <XCircle size={14} className="text-df-red" />;
   }
 }
 
 function StatusBadge({ status }: { status: TaskStatus }) {
   const cfg = {
-    pending: { label: "pending",    variant: "outline"      },
-    running: { label: "running…",  variant: "secondary"    },
-    success: { label: "success",    variant: "default"      },
-    failed:  { label: "failed",     variant: "destructive"  },
+    pending: { label: "PENDING",    className: "bg-white/5 text-white/40" },
+    running: { label: "RUNNING",    className: "bg-df-cyan/10 text-df-cyan border-df-cyan/20 animate-pulse" },
+    success: { label: "SUCCESS",    className: "badge-active" },
+    failed:  { label: "FAILED",     className: "badge-error"  },
   } as const;
-  const { label, variant } = cfg[status];
-  return <Badge variant={variant} className="text-[10px]">{label}</Badge>;
+  const { label, className } = cfg[status];
+  return <Badge className={cn("text-[9px] font-black tracking-widest px-2 py-0.5 rounded-lg border-0", className)}>{label}</Badge>;
 }
 
 export default function BulkDeployDialog({ open, onOpenChange, servers }: BulkDeployDialogProps) {
@@ -148,6 +149,8 @@ export default function BulkDeployDialog({ open, onOpenChange, servers }: BulkDe
     setPhase("done");
   };
 
+  const labelClass = "text-[11px] font-black uppercase tracking-widest text-df-text-secondary mb-2 block";
+
   return (
     <Dialog
       open={open}
@@ -155,123 +158,155 @@ export default function BulkDeployDialog({ open, onOpenChange, servers }: BulkDe
         if (phase !== "running") onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-2xl flex flex-col gap-0 p-0 max-h-[85vh]">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <DialogTitle>
-            Bulk Deploy — {servers.length} server{servers.length !== 1 ? "s" : ""}
-            {phase === "running" && ` (${doneCount}/${servers.length} xong)`}
-            {phase === "done" && " — Hoàn thành"}
-          </DialogTitle>
+      <DialogContent className="glass-dialog max-w-2xl flex flex-col gap-0 p-0 max-h-[85vh] rounded-3xl border-white/10 overflow-hidden">
+        <DialogHeader className="px-8 pt-8 pb-6 bg-white/[0.02] border-b border-white/[0.05] shrink-0">
+          <div className="flex items-center gap-4">
+             <div className="w-10 h-10 rounded-xl bg-df-purple/10 flex items-center justify-center shadow-neon-purple/20">
+                <Rocket size={20} className="text-df-purple" />
+             </div>
+             <div>
+                <DialogTitle className="text-[18px] font-black text-white uppercase tracking-tight">
+                  Bulk Infrastructure Deployment
+                </DialogTitle>
+                <p className="text-[10px] font-bold text-df-text-secondary uppercase tracking-widest mt-1 opacity-50">
+                   Targeting {servers.length} node{servers.length !== 1 ? "s" : ""}
+                   {phase === "running" && ` • Execution in progress (${doneCount}/${servers.length})`}
+                   {phase === "done" && " • Execution Complete"}
+                </p>
+             </div>
+          </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6 min-h-0 custom-scrollbar">
           {/* ── Config phase ─────────────────────────────────────── */}
           {phase === "config" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs">Auth type</Label>
-                <div className="flex gap-2">
-                  {(["password", "key"] as const).map((t) => (
-                    <Button
-                      key={t}
-                      size="sm"
-                      variant={authType === t ? "default" : "outline"}
-                      className="h-7 text-xs capitalize"
-                      onClick={() => setAuthType(t)}
+            <div className="animate-fade-in-up space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label className={labelClass}>SSH Authorization</Label>
+                  <div className="flex gap-2">
+                    {(["password", "key"] as const).map((t) => (
+                      <Button
+                        key={t}
+                        size="sm"
+                        variant="ghost"
+                        className={cn(
+                          "h-10 flex-1 btn-ghost-glass rounded-xl text-[11px] font-black uppercase tracking-widest transition-all",
+                          authType === t ? "bg-df-cyan/10 border-df-cyan text-df-cyan shadow-neon-cyan/20" : ""
+                        )}
+                        onClick={() => setAuthType(t)}
+                      >
+                        {t === "password" ? <ShieldCheck size={14} className="mr-2" /> : <Terminal size={14} className="mr-2" />}
+                        {t}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className={labelClass}>
+                    {authType === "password" ? "SSH Passkey" : "Private Key Path"}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showCred ? "text" : "password"}
+                      value={credential}
+                      onChange={(e) => setCredential(e.target.value)}
+                      placeholder={authType === "password" ? "••••••••" : "/root/.ssh/id_rsa"}
+                      className="h-10 input-glass rounded-xl pr-12 text-sm font-mono"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-df-text-secondary hover:text-df-cyan transition-colors"
+                      onClick={() => setShowCred((v) => !v)}
+                      tabIndex={-1}
                     >
-                      {t}
-                    </Button>
-                  ))}
+                      {showCred ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">
-                  {authType === "password" ? "Password SSH" : "Private key path"}
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    type={showCred ? "text" : "password"}
-                    value={credential}
-                    onChange={(e) => setCredential(e.target.value)}
-                    placeholder="••••••••"
-                    className="h-8 text-sm font-mono"
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setShowCred((v) => !v)}
-                  >
-                    {showCred ? <EyeOff size={13} /> : <Eye size={13} />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs">
-                  SSH Commands{" "}
-                  <span className="text-muted-foreground">(một lệnh mỗi dòng)</span>
+              <div className="space-y-3">
+                <Label className={labelClass}>
+                  Execution Script
+                  <span className="text-df-text-secondary opacity-40 ml-2">(One command per line)</span>
                 </Label>
                 <textarea
                   value={commandsText}
                   onChange={(e) => setCommandsText(e.target.value)}
-                  placeholder={"cd /app\ndocker compose pull\ndocker compose up -d"}
+                  placeholder={"# Example Script\ncd /opt/vms\ndocker compose pull\ndocker compose up -d"}
                   rows={5}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  className="w-full rounded-2xl input-glass bg-black/20 px-4 py-3 text-[13px] font-mono leading-relaxed placeholder:text-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-df-cyan/50 resize-none min-h-[120px] custom-scrollbar"
                 />
-                <p className="text-[10px] text-muted-foreground">
-                  {commands.length} lệnh × {servers.length} server (tối đa 5 song song)
-                </p>
+                <div className="flex justify-between items-center px-1">
+                   <p className="text-[10px] font-black text-df-text-secondary uppercase tracking-widest opacity-40">
+                    {commands.length} commands per node • Concurrency: 5
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Servers đã chọn</Label>
-                <div className="border rounded-md divide-y max-h-40 overflow-y-auto">
+              <div className="space-y-3">
+                <Label className={labelClass}>Target Infrastructure</Label>
+                <div className="glass-card rounded-2xl border-white/[0.03] divide-y divide-white/[0.03] max-h-48 overflow-y-auto custom-scrollbar">
                   {servers.map((s) => (
-                    <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
-                      <span className="font-medium">{s.name}</span>
-                      <span className="text-muted-foreground font-mono">{s.host}:{s.port}</span>
-                      <Badge variant="outline" className="text-[10px] capitalize ml-auto">
+                    <div key={s.id} className="flex items-center gap-4 px-5 py-3 group hover:bg-white/[0.02] transition-colors">
+                      <div className="w-1.5 h-1.5 rounded-full bg-df-cyan shadow-neon-cyan"></div>
+                      <div className="flex-1">
+                        <span className="text-[13px] font-black text-df-text-primary uppercase tracking-tight">{s.name}</span>
+                        <span className="text-[11px] font-mono text-df-text-secondary ml-3 opacity-40">{s.host}:{s.port}</span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-white/5 bg-white/5 text-df-text-secondary px-2 py-0.5 rounded-lg group-hover:text-df-cyan transition-colors">
                         {s.group_name}
                       </Badge>
                     </div>
                   ))}
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* ── Running / Done phase ──────────────────────────────── */}
           {(phase === "running" || phase === "done") && (
-            <div className="space-y-1">
+            <div className="space-y-3 animate-fade-in">
               {servers.map((s) => {
                 const task = tasks[s.id];
                 if (!task) return null;
                 return (
-                  <div key={s.id} className="border rounded-md overflow-hidden">
-                    <div className="flex items-center gap-2 px-3 py-2 text-xs">
+                  <div key={s.id} className="glass-card rounded-2xl border-white/[0.03] overflow-hidden group">
+                    <div 
+                      className={cn(
+                        "flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-white/[0.02] transition-all",
+                        task.expanded ? "bg-white/[0.02]" : ""
+                      )}
+                      onClick={() => toggleLog(s.id)}
+                    >
                       <StatusIcon status={task.status} />
-                      <span className="font-medium flex-1 truncate">{s.name}</span>
-                      <span className="text-muted-foreground font-mono text-[10px] shrink-0">
-                        {s.host}
-                      </span>
+                      <div className="flex-1 min-w-0">
+                         <span className="text-[13px] font-black text-df-text-primary uppercase tracking-tight block truncate">{s.name}</span>
+                         <span className="text-[10px] font-mono text-df-text-secondary opacity-40 uppercase tracking-widest">{s.host}</span>
+                      </div>
                       <StatusBadge status={task.status} />
                       {task.logs.length > 0 && (
-                        <button
-                          className="text-muted-foreground hover:text-foreground ml-1 shrink-0"
-                          onClick={() => toggleLog(s.id)}
-                        >
+                        <div className="ml-2 opacity-40 group-hover:opacity-100 transition-opacity">
                           {task.expanded
-                            ? <ChevronDown size={12} />
-                            : <ChevronRight size={12} />}
-                        </button>
+                            ? <ChevronDown size={14} className="text-df-cyan" />
+                            : <ChevronRight size={14} />}
+                        </div>
                       )}
                     </div>
                     {task.expanded && task.logs.length > 0 && (
-                      <div className="border-t bg-muted/30 px-3 py-2 max-h-36 overflow-y-auto">
-                        <pre className="text-[10px] font-mono whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                          {task.logs.join("\n")}
+                      <div className="bg-black/40 border-t border-white/[0.05] px-6 py-4 animate-fade-in">
+                        <div className="flex items-center gap-2 mb-3">
+                           <Terminal size={12} className="text-df-green opacity-60" />
+                           <span className="text-[9px] font-black text-df-green uppercase tracking-widest opacity-60">Terminal Execution Log</span>
+                        </div>
+                        <pre className="text-[11px] font-mono whitespace-pre-wrap text-df-text-secondary leading-relaxed custom-scrollbar max-h-48 overflow-y-auto">
+                          {task.logs.map((l, i) => (
+                             <div key={i} className={cn("mb-1", l.startsWith("[ERR]") ? "text-df-red" : "text-df-green")}>
+                                {l.startsWith("[ERR]") ? "✖ " : "✔ "} {l || " "}
+                             </div>
+                          ))}
                         </pre>
                       </div>
                     )}
@@ -282,26 +317,35 @@ export default function BulkDeployDialog({ open, onOpenChange, servers }: BulkDe
           )}
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t shrink-0">
+        <DialogFooter className="px-8 py-6 bg-white/[0.02] border-t border-white/[0.05] shrink-0 gap-3">
           {phase === "config" && (
             <>
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+              <Button variant="ghost" className="btn-ghost-glass h-11 px-8 rounded-xl" onClick={() => onOpenChange(false)}>
                 Hủy
               </Button>
-              <Button size="sm" disabled={!canStart} onClick={handleStart}>
-                ▶ Start Deploy
+              <Button disabled={!canStart} onClick={handleStart} className="btn-cyan h-11 px-10 rounded-xl font-black uppercase tracking-widest">
+                <Rocket size={18} className="mr-2" />
+                Execute Deployment
               </Button>
             </>
           )}
           {phase === "running" && (
-            <Button size="sm" variant="ghost" disabled>
-              <Loader2 size={13} className="animate-spin mr-1" />
-              Đang deploy…
-            </Button>
+            <div className="flex items-center gap-4 w-full">
+               <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-df-cyan shadow-neon-cyan transition-all duration-500" 
+                    style={{ width: `${(doneCount / servers.length) * 100}%` }}
+                  />
+               </div>
+               <Button variant="ghost" className="btn-ghost-glass h-11 px-8 rounded-xl opacity-50 cursor-not-allowed" disabled>
+                <Loader2 size={16} className="animate-spin mr-2" />
+                Deploying... {doneCount}/{servers.length}
+              </Button>
+            </div>
           )}
           {phase === "done" && (
-            <Button size="sm" onClick={() => onOpenChange(false)}>
-              Đóng
+            <Button className="btn-cyan h-11 px-10 rounded-xl font-black uppercase tracking-widest" onClick={() => onOpenChange(false)}>
+              Close Terminal
             </Button>
           )}
         </DialogFooter>

@@ -93,3 +93,65 @@ fn parse_disk(line: &str) -> (f64, f64, u32) {
         .unwrap_or(0);
     (total, used, pct)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── parse_ram ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_ram_typical() {
+        let (total, used) = parse_ram("32768 20480");
+        assert_eq!(total, 32768);
+        assert_eq!(used, 20480);
+    }
+
+    #[test]
+    fn test_parse_ram_single_value_used_is_zero() {
+        let (total, used) = parse_ram("8192");
+        assert_eq!(total, 8192);
+        assert_eq!(used, 0);
+    }
+
+    #[test]
+    fn test_parse_ram_empty_is_zero() {
+        assert_eq!(parse_ram(""), (0, 0));
+    }
+
+    #[test]
+    fn test_parse_ram_invalid_is_zero() {
+        assert_eq!(parse_ram("N/A N/A"), (0, 0));
+    }
+
+    // ── parse_disk ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_disk_with_g_suffix() {
+        let (total, used, pct) = parse_disk("200G 80G 40%");
+        assert!((total - 200.0).abs() < f64::EPSILON);
+        assert!((used - 80.0).abs() < f64::EPSILON);
+        assert_eq!(pct, 40);
+    }
+
+    #[test]
+    fn test_parse_disk_zero_usage() {
+        let (_, used, pct) = parse_disk("100G 0G 0%");
+        assert_eq!(used, 0.0);
+        assert_eq!(pct, 0);
+    }
+
+    #[test]
+    fn test_parse_disk_empty_all_zero() {
+        let (total, used, pct) = parse_disk("");
+        assert_eq!(total, 0.0);
+        assert_eq!(used, 0.0);
+        assert_eq!(pct, 0);
+    }
+
+    #[test]
+    fn test_parse_disk_percent_100() {
+        let (_, _, pct) = parse_disk("50G 50G 100%");
+        assert_eq!(pct, 100);
+    }
+}

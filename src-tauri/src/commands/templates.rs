@@ -27,7 +27,9 @@ fn config_path() -> Result<PathBuf, AppError> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TemplateConfig {
+    #[serde(default)]
     pub git_url: String,
+    #[serde(default)]
     pub git_branch: String,
 }
 
@@ -103,6 +105,142 @@ pub fn list_template_files() -> Vec<TemplateFile> {
     let mut files = Vec::new();
     collect_files(&dir, &dir, &mut files);
     files
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn unique_tmp() -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "vms-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos()
+        ))
+    }
+
+    // ── TemplateConfig serde ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_config_serde_roundtrip() {
+        let cfg = TemplateConfig {
+            git_url: "https://github.com/org/templates".into(),
+            git_branch: "main".into(),
+        };
+        let json = serde_json::to_string(&cfg).unwrap();
+        let back: TemplateConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.git_url, cfg.git_url);
+        assert_eq!(back.git_branch, cfg.git_branch);
+    }
+
+    #[test]
+    fn test_config_default_is_empty() {
+        let cfg = TemplateConfig::default();
+        assert!(cfg.git_url.is_empty());
+        assert!(cfg.git_branch.is_empty());
+    }
+
+    #[test]
+    fn test_config_deserialize_missing_fields_uses_default() {
+        let json = r#"{"git_url": "https://example.com/repo"}"#;
+        let cfg: TemplateConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(cfg.git_url, "https://example.com/repo");
+        assert!(cfg.git_branch.is_empty());
+    }
+
+    // ── collect_files ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_files_excludes_dotfiles_and_dotdirs() {
+        let base = unique_tmp();
+        fs::create_dir_all(&base).unwrap();
+        fs::write(base.join("docker-compose.yml"), "version: '3'").unwrap();
+        fs::write(base.join("README.md"), "# templates").unwrap();
+        fs::write(base.join(".gitignore"), "*.log").unwrap();
+        fs::create_dir(base.join(".git")).unwrap();
+        fs::write(base.join(".git").join("config"), "[core]").unwrap();
+
+        let mut files = Vec::new();
+        collect_files(&base, &base, &mut files);
+
+        let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"docker-compose.yml"), "yml should be included");
+        assert!(names.contains(&"README.md"), "md should be included");
+        assert!(!names.contains(&".gitignore"), ".gitignore excluded");
+        assert!(!names.contains(&"config"), ".git dir contents excluded");
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn test_collect_files_recurses_subdirs() {
+        let base = unique_tmp();
+        fs::create_dir_all(base.join("nginx")).unwrap();
+        fs::create_dir_all(base.join("postgres")).unwrap();
+        fs::write(base.join("nginx").join("docker-compose.yml"), "").unwrap();
+        fs::write(base.join("postgres").join("docker-compose.yml"), "").unwrap();
+        fs::write(base.join("root.yml"), "").unwrap();
+
+        let mut files = Vec::new();
+        collect_files(&base, &base, &mut files);
+
+        assert_eq!(files.len(), 3, "root + 2 subdirs");
+        let paths: Vec<&str> = files.iter().map(|f| f.relative_path.as_str()).collect();
+        assert!(paths.iter().any(|p| p.contains("nginx")));
+        assert!(paths.iter().any(|p| p.contains("postgres")));
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn test_collect_files_uses_forward_slashes() {
+        let base = unique_tmp();
+        fs::create_dir_all(base.join("sub")).unwrap();
+        fs::write(base.join("sub").join("file.yml"), "").unwrap();
+
+        let mut files = Vec::new();
+        collect_files(&base, &base, &mut files);
+
+        assert_eq!(files.len(), 1);
+        assert!(!files[0].relative_path.contains('\\'), "no backslash in path");
+        assert!(files[0].relative_path.contains('/'), "uses forward slash");
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn test_collect_files_empty_dir() {
+        let base = unique_tmp();
+        fs::create_dir_all(&base).unwrap();
+
+        let mut files = Vec::new();
+        collect_files(&base, &base, &mut files);
+        assert!(files.is_empty());
+
+        fs::remove_dir_all(&base).unwrap();
+    }
+
+    #[test]
+    fn test_collect_files_sorted_alphabetically() {
+        let base = unique_tmp();
+        fs::create_dir_all(&base).unwrap();
+        fs::write(base.join("z.yml"), "").unwrap();
+        fs::write(base.join("a.yml"), "").unwrap();
+        fs::write(base.join("m.yml"), "").unwrap();
+
+        let mut files = Vec::new();
+        collect_files(&base, &base, &mut files);
+
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[0].name, "a.yml");
+        assert_eq!(files[1].name, "m.yml");
+        assert_eq!(files[2].name, "z.yml");
+
+        fs::remove_dir_all(&base).unwrap();
+    }
 }
 
 /// Clone or pull the git repo into the template cache dir, streaming output as events.

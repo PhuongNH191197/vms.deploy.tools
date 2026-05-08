@@ -174,3 +174,220 @@ pub async fn get_snapshots_by_server(
     .await?;
     Ok(rows)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn setup_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("in-memory DB");
+
+        sqlx::query(
+            "CREATE TABLE servers (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, host TEXT NOT NULL,
+                port INTEGER NOT NULL, username TEXT NOT NULL, auth_type TEXT NOT NULL,
+                credential BLOB NOT NULL, group_name TEXT NOT NULL, last_seen DATETIME
+            )"
+        ).execute(&pool).await.expect("servers");
+
+        sqlx::query(
+            "CREATE TABLE deploy_history (
+                id TEXT PRIMARY KEY,
+                server_id TEXT NOT NULL,
+                module_name TEXT NOT NULL,
+                module_version TEXT NOT NULL,
+                action TEXT NOT NULL,
+                status TEXT NOT NULL,
+                operator_ip TEXT NOT NULL,
+                operator_host TEXT NOT NULL,
+                snapshot_path TEXT,
+                log_output TEXT,
+                deployed_at DATETIME NOT NULL DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.expect("deploy_history");
+
+        sqlx::query(
+            "CREATE TABLE snapshots (
+                id TEXT PRIMARY KEY,
+                deploy_id TEXT NOT NULL,
+                server_id TEXT NOT NULL,
+                module_name TEXT NOT NULL,
+                compose_backup TEXT NOT NULL,
+                image_tag TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.expect("snapshots");
+
+        // Seed a server for JOIN in get_audit_logs
+        sqlx::query(
+            "INSERT INTO servers (id,name,host,port,username,auth_type,credential,group_name)
+             VALUES ('srv-1','prod-01','1.2.3.4',22,'admin','password',X'00','production')"
+        ).execute(&pool).await.expect("seed server");
+
+        pool
+    }
+
+    async fn insert_sample(pool: &SqlitePool, server_id: &str, action: &str, status: &str) -> String {
+        insert_deploy_record(pool, server_id, "nginx", "1.0.0", action, status, "10.0.0.1", "devbox", None)
+            .await
+            .expect("insert")
+    }
+
+    // ── insert_deploy_record ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_insert_deploy_record_returns_id() {
+        let pool = setup_db().await;
+        let id = insert_sample(&pool, "srv-1", "install", "success").await;
+        assert!(!id.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_insert_deploy_record_with_log_output() {
+        let pool = setup_db().await;
+        let id = insert_deploy_record(&pool, "srv-1", "nginx", "2.0", "update", "success", "1.1.1.1", "host", Some("build ok"))
+            .await.expect("insert");
+
+        let rows = get_deploy_history(&pool, "srv-1").await.unwrap();
+        assert_eq!(rows[0].id, id);
+        assert_eq!(rows[0].log_output.as_deref(), Some("build ok"));
+    }
+
+    // ── update_deploy_status ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_update_deploy_status_changes_status_and_log() {
+        let pool = setup_db().await;
+        let id = insert_sample(&pool, "srv-1", "install", "in_progress").await;
+
+        update_deploy_status(&pool, &id, "success", Some("done")).await.expect("update");
+
+        let rows = get_deploy_history(&pool, "srv-1").await.unwrap();
+        assert_eq!(rows[0].status, "success");
+        assert_eq!(rows[0].log_output.as_deref(), Some("done"));
+    }
+
+    // ── get_deploy_history ────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_deploy_history_server_isolation() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "other-srv", "install", "success").await;
+
+        let rows = get_deploy_history(&pool, "srv-1").await.unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].server_id, "srv-1");
+    }
+
+    #[tokio::test]
+    async fn test_get_deploy_history_ordered_desc() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "srv-1", "update", "success").await;
+
+        let rows = get_deploy_history(&pool, "srv-1").await.unwrap();
+        assert_eq!(rows.len(), 2);
+        // More recent record comes first
+        assert!(rows[0].deployed_at >= rows[1].deployed_at);
+    }
+
+    // ── insert_snapshot / get_snapshots_by_server ─────────────────────────────
+
+    #[tokio::test]
+    async fn test_insert_and_get_snapshots() {
+        let pool = setup_db().await;
+        let deploy_id = insert_sample(&pool, "srv-1", "install", "success").await;
+
+        let snap_id = insert_snapshot(&pool, &deploy_id, "srv-1", "nginx", "version: '3'", "nginx:1.0")
+            .await.expect("insert snapshot");
+        assert!(!snap_id.is_empty());
+
+        let snaps = get_snapshots_by_server(&pool, "srv-1").await.unwrap();
+        assert_eq!(snaps.len(), 1);
+        assert_eq!(snaps[0].image_tag, "nginx:1.0");
+        assert_eq!(snaps[0].compose_backup, "version: '3'");
+    }
+
+    #[tokio::test]
+    async fn test_get_snapshots_server_isolation() {
+        let pool = setup_db().await;
+        let deploy_id = insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_snapshot(&pool, &deploy_id, "srv-1", "nginx", "...", "nginx:1.0").await.unwrap();
+        insert_snapshot(&pool, &deploy_id, "other-srv", "nginx", "...", "nginx:2.0").await.unwrap();
+
+        let snaps = get_snapshots_by_server(&pool, "srv-1").await.unwrap();
+        assert_eq!(snaps.len(), 1);
+        assert_eq!(snaps[0].image_tag, "nginx:1.0");
+    }
+
+    // ── get_audit_logs ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_audit_logs_no_filter_returns_all() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "srv-1", "rollback", "failed").await;
+
+        let logs = get_audit_logs(&pool, None, None, None, None).await.unwrap();
+        assert_eq!(logs.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_get_audit_logs_filter_by_server() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "other-srv", "install", "success").await;
+
+        let logs = get_audit_logs(&pool, Some("srv-1"), None, None, None).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].server_id, "srv-1");
+    }
+
+    #[tokio::test]
+    async fn test_get_audit_logs_filter_by_action() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "srv-1", "rollback", "success").await;
+
+        let logs = get_audit_logs(&pool, None, Some("rollback"), None, None).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].action, "rollback");
+    }
+
+    #[tokio::test]
+    async fn test_get_audit_logs_filter_by_status() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+        insert_sample(&pool, "srv-1", "install", "failed").await;
+
+        let logs = get_audit_logs(&pool, None, None, Some("failed"), None).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].status, "failed");
+    }
+
+    #[tokio::test]
+    async fn test_get_audit_logs_filter_by_search_module_name() {
+        let pool = setup_db().await;
+        // "nginx" in module_name
+        insert_deploy_record(&pool, "srv-1", "nginx", "1.0", "install", "success", "1.1.1.1", "host", None).await.unwrap();
+        insert_deploy_record(&pool, "srv-1", "postgres", "14", "install", "success", "1.1.1.1", "host", None).await.unwrap();
+
+        let logs = get_audit_logs(&pool, None, None, None, Some("nginx")).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].module_name, "nginx");
+    }
+
+    #[tokio::test]
+    async fn test_get_audit_logs_server_name_from_join() {
+        let pool = setup_db().await;
+        insert_sample(&pool, "srv-1", "install", "success").await;
+
+        let logs = get_audit_logs(&pool, Some("srv-1"), None, None, None).await.unwrap();
+        assert_eq!(logs[0].server_name, "prod-01"); // resolved via LEFT JOIN
+    }
+}

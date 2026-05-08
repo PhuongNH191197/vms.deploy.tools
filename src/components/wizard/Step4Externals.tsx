@@ -190,8 +190,8 @@ export default function Step4Externals() {
 
       <div className="flex justify-between pt-2">
         <Button variant="ghost" onClick={prevStep}>← Quay lại</Button>
-        <Button onClick={nextStep} disabled={selected.length === 0}>
-          Tiếp theo → ({selected.length} services)
+        <Button onClick={nextStep}>
+          Tiếp theo →{selected.length > 0 ? ` (${selected.length} services)` : ""}
         </Button>
       </div>
     </div>

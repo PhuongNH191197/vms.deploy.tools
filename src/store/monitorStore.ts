@@ -39,16 +39,13 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
     set((s) => ({ credentials: { ...s.credentials, [serverId]: cred } }));
   },
 
-  startPolling: (serverId, host, port, username) => {
+  startPolling: (serverId) => {
     const existing = get().intervals[serverId];
     if (existing) clearInterval(existing);
 
     const poll = async () => {
-      const cred = get().credentials[serverId];
-      if (!cred) return;
-
       try {
-        const metrics = await getServerMetrics({ host, port, username, authType: cred.authType, credential: cred.credential });
+        const metrics = await getServerMetrics(serverId);
         set((s) => ({
           entries: {
             ...s.entries,
@@ -74,7 +71,7 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
     };
 
     poll(); // immediate first fetch
-    const interval = setInterval(poll, 30_000);
+    const interval = setInterval(poll, 5_000);
 
     set((s) => ({ intervals: { ...s.intervals, [serverId]: interval } }));
   },
