@@ -148,7 +148,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (servers.length > 0) servers.forEach(s => startPolling(s.id, s.host, s.port, s.username));
+    if (servers.length > 0) servers.forEach(s => startPolling(s.id));
   }, [servers]);
 
   const isDemo = servers.length === 0;

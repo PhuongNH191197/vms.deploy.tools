@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { RealContainer } from "@/types/monitor";
 import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult, ToolMeta, Project } from "@/types";
 
 export async function addServer(payload: AddServerPayload): Promise<string> {
@@ -136,4 +137,49 @@ export async function updateProject(id: string, payload: { name: string; descrip
 
 export async function deleteProject(id: string): Promise<void> {
   return invoke("delete_project", { id });
+}
+
+/**
+ * Lấy danh sách containers từ server
+ */
+export async function getContainerInfo(payload: { serverId: string }): Promise<RealContainer[]> {
+  return await invoke("get_container_info", { serverId: payload.serverId });
+}
+
+/**
+ * Điều khiển container (start/stop/restart)
+ */
+export async function dockerContainerAction(payload: {
+  serverId: string;
+  container: string;
+  action: "start" | "stop" | "restart";
+}): Promise<string> {
+  return await invoke("docker_container_action", {
+    serverId: payload.serverId,
+    container: payload.container,
+    action: payload.action,
+  });
+}
+
+/**
+ * Stream log container. Lắng nghe event qua listen(payload.eventId, ...)
+ */
+export async function streamContainerLogs(payload: {
+  serverId: string;
+  container: string;
+  tail: number;
+  eventId: string;
+  customCommand?: string;
+}): Promise<void> {
+  return await invoke("stream_container_logs", {
+    serverId: payload.serverId,
+    container: payload.container,
+    tail: payload.tail,
+    eventId: payload.eventId,
+    customCommand: payload.customCommand,
+  });
+}
+
+export async function stopLogStream(eventId: string): Promise<void> {
+  return invoke("stop_log_stream", { eventId });
 }

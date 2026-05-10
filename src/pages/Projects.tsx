@@ -127,7 +127,7 @@ export default function Projects() {
       }
       setExpandedId(projectId);
       const next = servers.filter(s => s.project_id === projectId);
-      next.forEach(s => startPolling(s.id, s.host, s.port, s.username));
+      next.forEach(s => startPolling(s.id));
     }
   };
 

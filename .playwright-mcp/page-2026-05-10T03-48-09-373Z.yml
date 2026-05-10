@@ -267,7 +267,7 @@
             - generic [ref=e744]: Multi-Log Viewer
             - generic [ref=e745]: — 1 containers
           - generic [ref=e746]:
-            - textbox "tail -f /opt/vms/application/Logs/Ai/vms_ai.log" [ref=e747]
+            - textbox "df -h" [ref=e747]
             - button "Run All" [ref=e748] [cursor=pointer]:
               - img [ref=e749]
               - text: Run All
@@ -297,7 +297,7 @@
               - img [ref=e783]
               - textbox "Search..." [ref=e786]
           - generic [ref=e787]:
-            - generic [ref=e788]: $ tail -f /opt/vms/application/Logs/Ai/vms_ai.log
+            - generic [ref=e788]: $ df -h
             - generic [ref=e789]:
               - generic [ref=e790]: "[10:48:08]"
               - generic [ref=e791]: INFO

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ServerMetrics, ServerStatus } from "@/types";
-import type { LogPanelLayout } from "@/types/monitor";
-import { getServerMetrics, saveMetricsSnapshot } from "@/lib/tauri/commands";
+import type { LogPanelLayout, RealContainer } from "@/types/monitor";
+import { getServerMetrics, saveMetricsSnapshot, getContainerInfo, dockerContainerAction } from "@/lib/tauri/commands";
 
 interface SessionCredential {
   authType: string;
@@ -10,6 +10,7 @@ interface SessionCredential {
 
 interface MonitorEntry {
   metrics: ServerMetrics | null;
+  containers: RealContainer[];
   status: ServerStatus;
   lastUpdated: number;
 }
@@ -20,7 +21,7 @@ interface MonitorState {
   credentials: Record<string, SessionCredential>;
   intervals: Record<string, ReturnType<typeof setInterval>>;
   setCredential: (serverId: string, cred: SessionCredential) => void;
-  startPolling: (serverId: string, host: string, port: number, username: string) => void;
+  startPolling: (serverId: string) => void;
   stopPolling: (serverId: string) => void;
   stopAll: () => void;
 
@@ -52,6 +53,7 @@ interface MonitorState {
   setRefreshing: (v: boolean) => void;
   setAutoRefresh: (v: boolean) => void;
   setAutoRefreshInterval: (n: 5 | 10 | 30) => void;
+  dockerAction: (serverId: string, container: string, action: "start" | "stop" | "restart") => Promise<string>;
 }
 
 function calcStatus(metrics: ServerMetrics | null, error = false): ServerStatus {
@@ -75,13 +77,23 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
 
     const poll = async () => {
       try {
-        const metrics = await getServerMetrics(serverId);
+        const [metrics, containers] = await Promise.all([
+          getServerMetrics(serverId),
+          getContainerInfo({ serverId }).catch(() => [] as RealContainer[]),
+        ]);
+
         set((s) => ({
           entries: {
             ...s.entries,
-            [serverId]: { metrics, status: calcStatus(metrics), lastUpdated: Date.now() },
+            [serverId]: {
+              metrics,
+              containers,
+              status: calcStatus(metrics),
+              lastUpdated: Date.now(),
+            },
           },
         }));
+
         saveMetricsSnapshot({
           serverId,
           cpuPercent: metrics.cpu_percent,
@@ -89,12 +101,17 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
           ramUsedMb: metrics.ram_used_mb,
           ramTotalMb: metrics.ram_total_mb,
           diskPercent: metrics.disk_percent,
-        }).catch(() => {});
-      } catch {
+        }).catch(() => { });
+      } catch (e) {
         set((s) => ({
           entries: {
             ...s.entries,
-            [serverId]: { metrics: null, status: "offline", lastUpdated: Date.now() },
+            [serverId]: {
+              metrics: null,
+              containers: [],
+              status: "offline",
+              lastUpdated: Date.now(),
+            },
           },
         }));
       }
@@ -122,11 +139,11 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
   },
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  selectedProject: "prod",
+  selectedProject: "all",
   selectedContainerIds: [],
   modalContainerIds: [],
   isLogModalOpen: false,
-  logCommand: "tail -f /opt/vms/application/Logs/Ai/vms_ai.log",
+  logCommand: "df -h",
   logPanelLayout: "auto",
   filterServer: "all",
   filterStatus: "all",
@@ -158,4 +175,7 @@ export const useMonitorStore = create<MonitorState>((set, get) => ({
   setRefreshing: (v) => set({ isRefreshing: v }),
   setAutoRefresh: (v) => set({ autoRefresh: v }),
   setAutoRefreshInterval: (n) => set({ autoRefreshInterval: n }),
+  dockerAction: async (serverId, container, action) => {
+    return await dockerContainerAction({ serverId, container, action: action as any });
+  },
 }));

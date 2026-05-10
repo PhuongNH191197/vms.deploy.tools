@@ -8,6 +8,7 @@ use russh::ChannelMsg;
 use crate::error::AppError;
 use crate::ssh::SshSession;
 use crate::commands::server::DbState;
+use crate::db::server_repo;
 use crate::db::metrics_repo::{self, MetricsPoint};
 
 // ── Validation ───────────────────────────────────────────────────────────────
@@ -67,9 +68,16 @@ async fn open_session(
 /// Get running containers with CPU/RAM stats.
 #[tauri::command]
 pub async fn get_container_info(
-    host: String, port: u16, username: String, auth_type: String, credential: String,
+    server_id: String,
+    state: State<'_, DbState>,
 ) -> Result<Vec<ContainerInfo>, String> {
-    let mut session = open_session(&host, port, &username, &auth_type, &credential)
+    let row = server_repo::get_server_by_id(&state.0, &server_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+
+    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
         .await.map_err(|e| e.to_string())?;
 
     // docker ps: name|image|status|created
@@ -123,31 +131,43 @@ pub async fn get_container_info(
 pub async fn stream_container_logs(
     app: AppHandle,
     state: State<'_, LogStreamState>,
-    host: String,
-    port: u16,
-    username: String,
-    auth_type: String,
-    credential: String,
+    db_state: State<'_, DbState>,
+    server_id: String,
     container: String,
     tail: u32,
     event_id: String,
+    custom_command: Option<String>,
 ) -> Result<(), String> {
     validate_container_name(&container)?;
+
+    let row = server_repo::get_server_by_id(&db_state.0, &server_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+
     // Register cancel flag
     let cancel = Arc::new(AtomicBool::new(true));
     {
         let mut map = state.0.lock().unwrap();
-        // Stop any existing stream for this event_id
         if let Some(old) = map.get(&event_id) {
             old.store(false, Ordering::SeqCst);
         }
         map.insert(event_id.clone(), cancel.clone());
     }
 
-    let mut session = open_session(&host, port, &username, &auth_type, &credential)
+    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
         .await.map_err(|e| e.to_string())?;
 
-    let cmd = format!("docker logs -f --tail={tail} {container} 2>&1");
+    let cmd = if let Some(custom) = custom_command {
+        if custom.trim().is_empty() {
+            format!("docker logs -f --tail={tail} {container} 2>&1")
+        } else {
+            format!("{custom} 2>&1")
+        }
+    } else {
+        format!("docker logs -f --tail={tail} {container} 2>&1")
+    };
 
     let mut channel = session
         .open_channel()
@@ -215,7 +235,8 @@ pub fn stop_log_stream(
 /// Run a docker action (restart | stop | start) on a container.
 #[tauri::command]
 pub async fn docker_container_action(
-    host: String, port: u16, username: String, auth_type: String, credential: String,
+    server_id: String,
+    db_state: State<'_, DbState>,
     container: String, action: String,
 ) -> Result<String, String> {
     validate_container_name(&container)?;
@@ -225,7 +246,13 @@ pub async fn docker_container_action(
         _ => return Err("Invalid action".to_string()),
     };
 
-    let mut session = open_session(&host, port, &username, &auth_type, &credential)
+    let row = server_repo::get_server_by_id(&db_state.0, &server_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+
+    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
         .await.map_err(|e| e.to_string())?;
 
     let output = session

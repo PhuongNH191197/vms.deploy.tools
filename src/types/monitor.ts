@@ -30,3 +30,12 @@ export interface MockContainer {
   ram: string;
   uptime: string;
 }
+
+export interface RealContainer {
+  name: string;
+  image: string;
+  status: string;
+  created: string;
+  cpu_perc: string;
+  mem_perc: string;
+}

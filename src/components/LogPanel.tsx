@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Pause, Play, Trash2, Download, Search, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Pause, Play, Trash2, Download, Terminal as TerminalIcon } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import { cn } from "@/lib/utils";
+import { streamContainerLogs, stopLogStream } from "@/lib/tauri/commands";
 import type { MockContainer } from "@/types/monitor";
 
 interface Props {
@@ -8,128 +13,137 @@ interface Props {
   command: string;
 }
 
-type LogLevel = "INFO" | "DEBUG" | "WARN" | "ERROR";
-
-interface LogLine {
-  id: number;
-  time: string;
-  level: LogLevel;
-  msg: string;
-}
-
-const LOG_POOL: Array<{ level: LogLevel; msgs: string[] }> = [
-  {
-    level: "INFO",
-    msgs: [
-      "Application heartbeat OK",
-      "Listening on port 5000",
-      "Request processed in 42ms",
-      "Health check passed",
-      "Connected to database",
-      "Cache hit ratio: 94.2%",
-      "Worker thread ready",
-      "Scheduled task completed",
-    ],
-  },
-  {
-    level: "DEBUG",
-    msgs: [
-      "Connecting to database...",
-      "Session token refreshed",
-      "Memory GC triggered",
-      "Config reloaded from disk",
-      "Worker thread idle",
-      "Queue depth: 0",
-    ],
-  },
-  {
-    level: "WARN",
-    msgs: [
-      "High memory usage detected: 78%",
-      "Slow query detected: 2300ms",
-      "Retry attempt 2/3",
-      "Rate limit approaching: 85%",
-      "Disk write latency elevated",
-    ],
-  },
-  {
-    level: "ERROR",
-    msgs: [
-      "Failed to process request: timeout",
-      "Connection refused: redis:6379",
-      "Unhandled exception in worker",
-      "Circuit breaker tripped",
-    ],
-  },
-];
-
-function pickLog(id: number): LogLine {
-  const now = new Date();
-  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
-    .map((n) => String(n).padStart(2, "0"))
-    .join(":");
-  const r = Math.random();
-  const bucket =
-    r < 0.5 ? LOG_POOL[0] : r < 0.75 ? LOG_POOL[1] : r < 0.9 ? LOG_POOL[2] : LOG_POOL[3];
-  const msg = bucket.msgs[Math.floor(Math.random() * bucket.msgs.length)];
-  return { id, time, level: bucket.level, msg };
-}
-
-const LEVEL_CLASS: Record<LogLevel, string> = {
-  INFO: "text-[#22d3ee]",
-  DEBUG: "text-[#4b5563]",
-  WARN: "text-[#fbbf24]",
-  ERROR: "text-[#f87171]",
-};
-
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>;
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-[#ffaa00]/30 text-[#fbbf24] rounded-sm px-0.5 not-italic">
-        {text.slice(idx, idx + query.length)}
-      </mark>
-      {text.slice(idx + query.length)}
-    </>
-  );
-}
-
 export default function LogPanel({ container, command }: Props) {
-  const [lines, setLines] = useState<LogLine[]>(() =>
-    Array.from({ length: 10 }, (_, i) => pickLog(i))
-  );
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  
   const [paused, setPaused] = useState(false);
-  const [search, setSearch] = useState("");
-  const counterRef = useRef(10);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
   const pausedRef = useRef(false);
+  const logHistoryRef = useRef<string[]>([]);
 
   pausedRef.current = paused;
 
-  const addLine = useCallback(() => {
-    if (pausedRef.current) return;
-    const line = pickLog(counterRef.current++);
-    setLines((prev) => [...prev.slice(-499), line]);
+  // Initialize Terminal
+  useEffect(() => {
+    if (!terminalRef.current) return;
+
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 11,
+      fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+      theme: {
+        background: "#0b0b18",
+        foreground: "#a9b1d6",
+        cursor: "#00d4ff",
+        selectionBackground: "rgba(0, 212, 255, 0.3)",
+        black: "#1a1b26",
+        red: "#f7768e",
+        green: "#9ece6a",
+        yellow: "#e0af68",
+        blue: "#7aa2f7",
+        magenta: "#bb9af7",
+        cyan: "#7dcfff",
+        white: "#a9b1d6",
+        brightBlack: "#414868",
+        brightRed: "#f7768e",
+        brightGreen: "#9ece6a",
+        brightYellow: "#e0af68",
+        brightBlue: "#7aa2f7",
+        brightMagenta: "#bb9af7",
+        brightCyan: "#7dcfff",
+        brightWhite: "#c0caf5",
+      },
+      allowProposedApi: true,
+      scrollback: 5000,
+      rows: 20,
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalRef.current);
+    fitAddon.fit();
+
+    xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
+
+    const handleResize = () => fitAddon.fit();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      term.dispose();
+    };
   }, []);
 
+  // Handle Data Streaming
   useEffect(() => {
-    const id = setInterval(addLine, 600 + Math.random() * 1400);
-    return () => clearInterval(id);
-  }, [addLine]);
+    let unlisten: (() => void) | null = null;
+    const eventId = `logs-${container.serverId}-${container.name}-${Math.random().toString(36).slice(2)}`;
 
+    const startStream = async () => {
+      try {
+        setIsStreaming(true);
+        
+        if (command && command !== "tail -f" && xtermRef.current) {
+          xtermRef.current.writeln(`\r\n\x1b[1;36m>_ $ ${command}\x1b[0m`);
+        }
+
+        unlisten = await listen<{ line: string; done: boolean }>(eventId, (event) => {
+          if (event.payload.done) {
+             setIsStreaming(false);
+             return;
+          }
+          
+          logHistoryRef.current.push(event.payload.line);
+          if (pausedRef.current) return;
+          
+          if (xtermRef.current) {
+            // Write line to xterm
+            xtermRef.current.writeln(event.payload.line);
+          }
+        });
+
+        await streamContainerLogs({
+          serverId: container.serverId,
+          container: container.name,
+          tail: 100,
+          eventId,
+          customCommand: command,
+        });
+      } catch (err) {
+        console.error("Failed to stream logs:", err);
+        if (xtermRef.current) {
+          xtermRef.current.writeln(`\r\n\x1b[1;31m[System Error] ${err}\x1b[0m`);
+        }
+        setIsStreaming(false);
+      }
+    };
+
+    startStream();
+
+    return () => {
+      if (unlisten) unlisten();
+      stopLogStream(eventId).catch(console.error);
+    };
+  }, [container.serverId, container.name, command]);
+
+  // Handle Resizing when container size changes
   useEffect(() => {
-    if (!paused && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [lines, paused]);
+    const timer = setTimeout(() => {
+      fitAddonRef.current?.fit();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [container]);
+
+  const handleClear = () => {
+    xtermRef.current?.clear();
+    logHistoryRef.current = [];
+  };
 
   const handleDownload = () => {
-    const content = lines
-      .map((l) => `[${l.time}] ${l.level.padEnd(5)} ${l.msg}`)
-      .join("\n");
+    const content = logHistoryRef.current.join("\n");
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -139,16 +153,6 @@ export default function LogPanel({ container, command }: Props) {
     URL.revokeObjectURL(url);
   };
 
-  const filtered = search
-    ? lines.filter(
-        (l) =>
-          l.msg.toLowerCase().includes(search.toLowerCase()) ||
-          l.level.toLowerCase().includes(search.toLowerCase())
-      )
-    : lines;
-
-  const isRunning = container.status === "running";
-
   return (
     <div
       className="flex flex-col h-full rounded-xl overflow-hidden border border-white/[0.08]"
@@ -157,10 +161,10 @@ export default function LogPanel({ container, command }: Props) {
       {/* Panel header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] shrink-0" style={{ background: "rgba(255,255,255,0.03)" }}>
         <div
-          className={cn("w-1.5 h-1.5 rounded-full shrink-0", isRunning && "animate-pulse-glow")}
+          className={cn("w-1.5 h-1.5 rounded-full shrink-0", isStreaming && "animate-pulse-glow")}
           style={{
-            background: isRunning ? "#00ff88" : "#ff4444",
-            boxShadow: isRunning ? "0 0 6px #00ff8888" : "0 0 6px #ff444488",
+            background: isStreaming ? "#00ff88" : "#ff4444",
+            boxShadow: isStreaming ? "0 0 6px #00ff8888" : "0 0 6px #ff444488",
           }}
         />
         <span className="text-[10px] font-bold text-white/60 font-mono truncate flex-1">
@@ -187,7 +191,7 @@ export default function LogPanel({ container, command }: Props) {
           {paused ? "Resume" : "Pause"}
         </button>
         <button
-          onClick={() => setLines([])}
+          onClick={handleClear}
           className="p-1 rounded border border-white/[0.08] text-white/30 hover:text-[#ff4444] hover:border-[#ff4444]/20 transition-all"
           title="Clear"
         >
@@ -200,60 +204,27 @@ export default function LogPanel({ container, command }: Props) {
         >
           <Download size={10} />
         </button>
-        <div className="flex-1 relative ml-1">
-          <Search size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/20" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
-            className="w-full rounded text-[10px] text-white/60 pl-5 pr-5 py-0.5 outline-none transition-all font-mono border border-white/[0.06] focus:border-[#00d4ff]/20"
-            style={{ background: "rgba(255,255,255,0.04)" }}
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/25 hover:text-white"
-            >
-              <X size={9} />
-            </button>
-          )}
+        
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-2 px-2 py-0.5 rounded bg-white/[0.03] border border-white/[0.05]">
+           <TerminalIcon size={10} className="text-[#00d4ff]/50" />
+           <span className="text-[9px] text-white/30 font-mono uppercase tracking-widest">TTY Active</span>
         </div>
       </div>
 
-      {/* Log area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-2.5 custom-scrollbar"
-        style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace" }}
-      >
-        {command && (
-          <div
-            className="text-[10px] mb-2 pb-2 border-b border-white/[0.04]"
-            style={{ color: "rgba(0,212,255,0.5)" }}
-          >
-            $ {command}
-          </div>
+      {/* Terminal area */}
+      <div className="flex-1 min-h-0 relative bg-[#0b0b18]">
+        <div 
+          ref={terminalRef} 
+          className="absolute inset-0 p-2"
+        />
+        {!isStreaming && logHistoryRef.current.length === 0 && (
+           <div className="absolute inset-0 flex flex-col items-center justify-center opacity-10 pointer-events-none">
+              <TerminalIcon size={48} className="mb-4" />
+              <span className="text-xs font-black uppercase tracking-[0.3em]">Disconnected</span>
+           </div>
         )}
-        {filtered.map((line) => {
-          const dimmed = search && !line.msg.toLowerCase().includes(search.toLowerCase()) && !line.level.toLowerCase().includes(search.toLowerCase());
-          return (
-            <div
-              key={line.id}
-              className={cn(
-                "flex gap-2 px-1 py-[1px] rounded hover:bg-white/[0.02] transition-colors text-[11px] leading-[1.65]",
-                dimmed && "opacity-25"
-              )}
-            >
-              <span className="text-white/20 shrink-0 tabular-nums">[{line.time}]</span>
-              <span className={cn("font-bold shrink-0 w-11", LEVEL_CLASS[line.level])}>
-                {line.level}
-              </span>
-              <span className="text-white/65 flex-1 break-all">
-                <HighlightedText text={line.msg} query={search} />
-              </span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

@@ -24,16 +24,16 @@ function resolveGridClass(count: number, layout: LogPanelLayout): string {
     layout !== "auto"
       ? (layout as number)
       : count === 1
-      ? 1
-      : count === 2
-      ? 2
-      : count <= 4
-      ? 2
-      : count <= 6
-      ? 3
-      : count <= 9
-      ? 3
-      : 4;
+        ? 1
+        : count === 2
+          ? 2
+          : count <= 4
+            ? 2
+            : count <= 6
+              ? 3
+              : count <= 9
+                ? 3
+                : 4;
   return GRID_COLS[cols] ?? "grid-cols-4";
 }
 
@@ -55,6 +55,7 @@ export default function MultiLogViewer({ containers, onClose }: Props) {
   const handleRunAll = () => {
     setActiveCommand(localCommand);
     setLogCommand(localCommand);
+    setLocalCommand(""); // Clear input after execution
   };
 
   const gridClass = resolveGridClass(containers.length, logPanelLayout);
@@ -87,7 +88,7 @@ export default function MultiLogViewer({ containers, onClose }: Props) {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleRunAll();
             }}
-            placeholder="tail -f /opt/vms/application/Logs/Ai/vms_ai.log"
+            placeholder="df -h"
             className="h-8 text-[11px] input-glass rounded-xl border-white/10 font-mono"
           />
           <button

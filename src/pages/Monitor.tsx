@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { RefreshCw, AlertTriangle, ChevronDown, ToggleLeft, ToggleRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { RefreshCw, AlertTriangle, ChevronDown, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,73 +10,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useMonitorStore } from "@/store/monitorStore";
+import { useServerStore } from "@/store/serverStore";
+import { listProjects } from "@/lib/tauri/commands";
 import ServerCard from "@/components/ServerCard";
 import ContainerTable from "@/components/ContainerTable";
 import MultiLogViewer from "@/components/MultiLogViewer";
-import type { MockServer, MockContainer, MonitorProject } from "@/types/monitor";
-
-// ── Mock data ──────────────────────────────────────────────────────────────────
-
-const MOCK_PROJECTS: MonitorProject[] = [
-  { id: "prod", name: "VMS Production" },
-  { id: "staging", name: "VMS Staging" },
-  { id: "lab", name: "Lab" },
-];
-
-const MOCK_SERVERS: MockServer[] = [
-  {
-    id: "s1", name: "server1", ip: "192.168.1.101",
-    cpu: 45, ram: 62, disk: 38, containersRunning: 3, containersTotal: 3, status: "online",
-  },
-  {
-    id: "s2", name: "server2", ip: "192.168.1.102",
-    cpu: 82, ram: 91, disk: 55, containersRunning: 2, containersTotal: 3, status: "warning",
-  },
-  {
-    id: "s3", name: "server3", ip: "192.168.1.103",
-    cpu: 23, ram: 41, disk: 20, containersRunning: 3, containersTotal: 3, status: "online",
-  },
-  {
-    id: "s4", name: "server4", ip: "192.168.1.104",
-    cpu: 67, ram: 73, disk: 48, containersRunning: 2, containersTotal: 2, status: "online",
-  },
-  {
-    id: "s5", name: "server5", ip: "192.168.1.105",
-    cpu: 12, ram: 28, disk: 15, containersRunning: 4, containersTotal: 4, status: "online",
-  },
-  {
-    id: "s6", name: "server6", ip: "192.168.1.106",
-    cpu: 0, ram: 0, disk: 0, containersRunning: 0, containersTotal: 2, status: "offline",
-  },
-];
-
-const MOCK_CONTAINERS: MockContainer[] = [
-  { id: "s1-vms_ai",     serverId: "s1", serverName: "server1", serverIp: "192.168.1.101", name: "vms_ai",     image: "vms/ai:latest",     status: "running",  cpu: "0.8%",  ram: "2.1%",  uptime: "2d 4h"  },
-  { id: "s1-vms_api",    serverId: "s1", serverName: "server1", serverIp: "192.168.1.101", name: "vms_api",    image: "vms/api:latest",    status: "running",  cpu: "1.2%",  ram: "3.4%",  uptime: "2d 4h"  },
-  { id: "s1-vms_worker", serverId: "s1", serverName: "server1", serverIp: "192.168.1.101", name: "vms_worker", image: "vms/worker:latest", status: "running",  cpu: "0.5%",  ram: "1.8%",  uptime: "2d 4h"  },
-  { id: "s2-vms_ai",     serverId: "s2", serverName: "server2", serverIp: "192.168.1.102", name: "vms_ai",     image: "vms/ai:latest",     status: "running",  cpu: "12.4%", ram: "18.2%", uptime: "1d 12h" },
-  { id: "s2-vms_api",    serverId: "s2", serverName: "server2", serverIp: "192.168.1.102", name: "vms_api",    image: "vms/api:latest",    status: "exited",   cpu: "0%",    ram: "0%",    uptime: "—"      },
-  { id: "s2-vms_worker", serverId: "s2", serverName: "server2", serverIp: "192.168.1.102", name: "vms_worker", image: "vms/worker:latest", status: "running",  cpu: "8.1%",  ram: "11.5%", uptime: "1d 12h" },
-  { id: "s3-vms_ai",     serverId: "s3", serverName: "server3", serverIp: "192.168.1.103", name: "vms_ai",     image: "vms/ai:latest",     status: "running",  cpu: "0.3%",  ram: "1.2%",  uptime: "5d 8h"  },
-  { id: "s3-vms_api",    serverId: "s3", serverName: "server3", serverIp: "192.168.1.103", name: "vms_api",    image: "vms/api:latest",    status: "running",  cpu: "0.9%",  ram: "2.8%",  uptime: "5d 8h"  },
-  { id: "s3-vms_worker", serverId: "s3", serverName: "server3", serverIp: "192.168.1.103", name: "vms_worker", image: "vms/worker:latest", status: "running",  cpu: "0.4%",  ram: "1.5%",  uptime: "5d 8h"  },
-  { id: "s4-vms_ai",     serverId: "s4", serverName: "server4", serverIp: "192.168.1.104", name: "vms_ai",     image: "vms/ai:latest",     status: "running",  cpu: "5.6%",  ram: "8.3%",  uptime: "3d 2h"  },
-  { id: "s4-vms_worker", serverId: "s4", serverName: "server4", serverIp: "192.168.1.104", name: "vms_worker", image: "vms/worker:latest", status: "running",  cpu: "4.2%",  ram: "6.7%",  uptime: "3d 2h"  },
-  { id: "s5-vms_ai",     serverId: "s5", serverName: "server5", serverIp: "192.168.1.105", name: "vms_ai",     image: "vms/ai:latest",     status: "running",  cpu: "0.2%",  ram: "0.8%",  uptime: "10d 6h" },
-  { id: "s5-vms_api",    serverId: "s5", serverName: "server5", serverIp: "192.168.1.105", name: "vms_api",    image: "vms/api:latest",    status: "running",  cpu: "0.5%",  ram: "1.4%",  uptime: "10d 6h" },
-  { id: "s5-vms_worker", serverId: "s5", serverName: "server5", serverIp: "192.168.1.105", name: "vms_worker", image: "vms/worker:latest", status: "running",  cpu: "0.3%",  ram: "0.9%",  uptime: "10d 6h" },
-  { id: "s5-nginx",      serverId: "s5", serverName: "server5", serverIp: "192.168.1.105", name: "nginx",      image: "nginx:alpine",      status: "running",  cpu: "0.1%",  ram: "0.3%",  uptime: "10d 6h" },
-];
-
-// ── Derived counts ─────────────────────────────────────────────────────────────
-
-const TOTAL_RUNNING = MOCK_CONTAINERS.filter((c) => c.status === "running").length;
-const ALERT_SERVERS = MOCK_SERVERS.filter((s) => s.status === "warning").length;
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+import type { Project } from "@/types";
+import type { MockServer, MockContainer } from "@/types/monitor";
 
 export default function Monitor() {
   const {
+    entries,
+    startPolling,
+    stopAll,
     selectedProject,
     setSelectedProject,
     selectedContainerIds,
@@ -101,13 +47,73 @@ export default function Monitor() {
     setAutoRefreshInterval,
   } = useMonitorStore();
 
+  const { servers, fetchServers, loading: serversLoading } = useServerStore();
+  const [projects, setProjects] = useState<Project[]>([]);
+
   const tableRef = useRef<HTMLDivElement>(null);
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const currentProject =
-    MOCK_PROJECTS.find((p) => p.id === selectedProject) ?? MOCK_PROJECTS[0];
+  // 1. Initial Load
+  useEffect(() => {
+    fetchServers();
+    listProjects()
+      .then(setProjects)
+      .catch(console.error);
+    return () => stopAll();
+  }, [fetchServers, stopAll]);
 
-  // Auto-refresh simulation
+  // 2. Manage Polling
+  useEffect(() => {
+    servers.forEach((s) => {
+      startPolling(s.id);
+    });
+  }, [servers, startPolling]);
+
+  // 3. Derived Data
+  const filteredServers = servers.filter(s => 
+    selectedProject === "all" || s.project_id === selectedProject
+  );
+
+  const realServers: MockServer[] = filteredServers.map(s => {
+    const entry = entries[s.id];
+    return {
+      id: s.id,
+      name: s.name,
+      ip: s.host,
+      cpu: entry?.metrics?.cpu_percent ?? 0,
+      ram: entry?.metrics?.ram_percent ?? 0,
+      disk: entry?.metrics?.disk_percent ?? 0,
+      containersRunning: entry?.containers?.filter(c => c.status.toLowerCase().includes("up")).length ?? 0,
+      containersTotal: entry?.containers?.length ?? 0,
+      status: (entry?.status === "unknown" ? "offline" : (entry?.status || "offline")) as "online" | "warning" | "offline",
+    };
+  });
+
+  const realContainers: MockContainer[] = filteredServers.flatMap(s => {
+    const entry = entries[s.id];
+    if (!entry) return [];
+    return entry.containers.map(c => ({
+      id: `${s.id}-${c.name}`,
+      serverId: s.id,
+      serverName: s.name,
+      serverIp: s.host,
+      name: c.name,
+      image: c.image,
+      status: c.status.toLowerCase().includes("up") ? "running" : "exited",
+      cpu: c.cpu_perc,
+      ram: c.mem_perc,
+      uptime: c.created,
+    }));
+  });
+
+  const TOTAL_RUNNING = realContainers.filter((c) => c.status === "running").length;
+  const ALERT_SERVERS = realServers.filter((s) => s.status === "warning").length;
+
+  const currentProjectName = 
+    selectedProject === "all" ? "All Projects" : 
+    projects.find(p => p.id === selectedProject)?.name ?? "Unknown Project";
+
+  // Auto-refresh simulation (updates UI state, real polling is separate)
   useEffect(() => {
     if (autoRefresh) {
       autoRefreshRef.current = setInterval(() => {
@@ -124,7 +130,9 @@ export default function Monitor() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 900);
+    // Manual refresh: re-fetch servers and projects
+    fetchServers();
+    listProjects().then(setProjects).finally(() => setRefreshing(false));
   };
 
   const handleServerCardClick = (serverId: string) => {
@@ -141,8 +149,17 @@ export default function Monitor() {
 
   const modalContainers =
     modalContainerIds.length > 0
-      ? MOCK_CONTAINERS.filter((c) => modalContainerIds.includes(c.id))
-      : MOCK_CONTAINERS.slice(0, 1);
+      ? realContainers.filter((c) => modalContainerIds.includes(c.id))
+      : realContainers.slice(0, 1);
+
+  if (serversLoading && servers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-40 gap-4">
+        <Loader2 className="animate-spin text-df-cyan" size={40} />
+        <p className="text-sm font-black text-white/40 uppercase tracking-widest">Loading Infrastructure...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-7 pb-16 animate-fade-in">
@@ -156,12 +173,15 @@ export default function Monitor() {
                 className="w-2 h-2 rounded-full"
                 style={{ background: "#00d4ff", boxShadow: "0 0 8px #00d4ffaa" }}
               />
-              <span className="text-[13px] font-bold text-white">{currentProject.name}</span>
+              <span className="text-[13px] font-bold text-white">{currentProjectName}</span>
               <ChevronDown size={13} className="text-white/35" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-[180px]">
-            {MOCK_PROJECTS.map((p) => (
+            <DropdownMenuItem onClick={() => setSelectedProject("all")} className={cn("text-[12px]", selectedProject === "all" && "text-[#00d4ff]")}>
+              All Projects
+            </DropdownMenuItem>
+            {projects.map((p) => (
               <DropdownMenuItem
                 key={p.id}
                 onClick={() => setSelectedProject(p.id)}
@@ -176,7 +196,7 @@ export default function Monitor() {
         {/* Summary badges */}
         <div className="flex items-center gap-2">
           <Badge className="text-[10px] font-bold px-3 py-1 bg-white/[0.04] text-white/50 border-white/10 rounded-lg">
-            {MOCK_SERVERS.length} servers
+            {realServers.length} servers
           </Badge>
           <Badge className="text-[10px] font-bold px-3 py-1 bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20 rounded-lg">
             {TOTAL_RUNNING} running
@@ -245,16 +265,22 @@ export default function Monitor() {
         <p className="text-[9px] font-black text-white/25 uppercase tracking-[0.25em] mb-3">
           Server Health Overview
         </p>
-        <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
-          {MOCK_SERVERS.map((s) => (
-            <ServerCard
-              key={s.id}
-              server={s}
-              isHighlighted={filterServer === s.id}
-              onClick={() => handleServerCardClick(s.id)}
-            />
-          ))}
-        </div>
+        {realServers.length === 0 ? (
+          <div className="py-10 text-center border border-dashed border-white/10 rounded-2xl">
+            <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest">No servers found in this project</p>
+          </div>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-3 custom-scrollbar">
+            {realServers.map((s) => (
+              <ServerCard
+                key={s.id}
+                server={s}
+                isHighlighted={filterServer === s.id}
+                onClick={() => handleServerCardClick(s.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Part 3: Container Table ─────────────────────────────────────────────── */}
@@ -273,8 +299,8 @@ export default function Monitor() {
           )}
         </div>
         <ContainerTable
-          containers={MOCK_CONTAINERS}
-          servers={MOCK_SERVERS}
+          containers={realContainers}
+          servers={realServers}
           selectedIds={selectedContainerIds}
           filterServer={filterServer}
           filterStatus={filterStatus}
