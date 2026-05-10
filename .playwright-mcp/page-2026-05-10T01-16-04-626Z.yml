@@ -1,0 +1,188 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e9]
+      - generic [ref=e11]: TOOLS DEPLOYMENT
+    - navigation [ref=e12]:
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+        - img [ref=e16]
+        - generic [ref=e19]: Dashboard
+      - link "deployments" [ref=e20] [cursor=pointer]:
+        - /url: /update
+        - img [ref=e21]
+        - generic [ref=e26]: deployments
+      - link "infrastructure" [ref=e27] [cursor=pointer]:
+        - /url: /setup
+        - img [ref=e28]
+        - generic [ref=e32]: infrastructure
+      - link "alerts" [ref=e33] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e34]
+        - generic [ref=e37]: alerts
+      - link "settings" [ref=e38] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e39]
+        - generic [ref=e42]: settings
+    - generic [ref=e44]:
+      - generic [ref=e45]: Infrastructure
+      - generic [ref=e46]: v1.0.0 Stable
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - heading "Infrastructure Overview" [level=1] [ref=e50]
+        # - generic [ref=e51]:
+        #   - generic [ref=e52]: "Project: AURORA-PROD"
+        #   - generic [ref=e53]: "|"
+        #   - generic [ref=e54]: 10 tháng 5, 2026
+        #   - generic [ref=e55]: "|"
+        #   - generic [ref=e56]: "Status: ● Healthy"
+      - button "Synchronize" [ref=e57] [cursor=pointer]:
+        - img
+        - text: Synchronize
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - tablist [ref=e62]:
+          - tab "all 6" [active] [selected] [ref=e63] [cursor=pointer]:
+            - text: all
+            - generic [ref=e64]: "6"
+          - tab "production 4" [ref=e65] [cursor=pointer]:
+            - text: production
+            - generic [ref=e66]: "4"
+          - tab "staging 1" [ref=e67] [cursor=pointer]:
+            - text: staging
+            - generic [ref=e68]: "1"
+          - tab "lab 1" [ref=e69] [cursor=pointer]:
+            - text: lab
+            - generic [ref=e70]: "1"
+        - button "THÊM SERVER" [ref=e71] [cursor=pointer]:
+          - img
+          - text: THÊM SERVER
+      - tabpanel "all 6" [ref=e72]:
+        - generic [ref=e416]:
+          - generic [ref=e417] [cursor=pointer]:
+            - generic [ref=e418]:
+              - generic [ref=e419]:
+                - heading "Web-Server-01" [level=3] [ref=e420]
+                - paragraph [ref=e421]: Healthy
+              - generic [ref=e422]: ACTIVE
+            - generic [ref=e425]:
+              - generic [ref=e426]: CPU
+              - generic [ref=e427]: 78%
+            - generic [ref=e431]:
+              - generic [ref=e432]: RAM
+              - generic [ref=e433]: 62%
+            - generic [ref=e436]:
+              - generic [ref=e437]:
+                - generic [ref=e438]:
+                  - generic [ref=e439]: Disk
+                  - generic [ref=e440]: 45%
+                - img [ref=e441]
+              - generic [ref=e443]:
+                - generic [ref=e444]: Uptime
+                - text: 34 days
+          - generic [ref=e445] [cursor=pointer]:
+            - generic [ref=e446]:
+              - generic [ref=e447]:
+                - heading "API-Gateway-03" [level=3] [ref=e448]
+                - paragraph [ref=e449]: Healthy
+              - generic [ref=e450]: ACTIVE
+            - generic [ref=e453]:
+              - generic [ref=e454]: CPU
+              - generic [ref=e455]: 55%
+            - generic [ref=e459]:
+              - generic [ref=e460]: RAM
+              - generic [ref=e461]: 71%
+            - generic [ref=e464]:
+              - generic [ref=e465]:
+                - generic [ref=e466]:
+                  - generic [ref=e467]: Disk
+                  - generic [ref=e468]: 45%
+                - img [ref=e469]
+              - generic [ref=e471]:
+                - generic [ref=e472]: Uptime
+                - text: 39 days
+          - generic [ref=e473] [cursor=pointer]:
+            - generic [ref=e474]:
+              - generic [ref=e475]:
+                - heading "Database-Cluster-02" [level=3] [ref=e476]
+                - paragraph [ref=e477]: Healthy
+              - generic [ref=e478]: ACTIVE
+            - generic [ref=e481]:
+              - generic [ref=e482]: CPU
+              - generic [ref=e483]: 81%
+            - generic [ref=e487]:
+              - generic [ref=e488]: RAM
+              - generic [ref=e489]: 67%
+            - generic [ref=e492]:
+              - generic [ref=e493]:
+                - generic [ref=e494]:
+                  - generic [ref=e495]: Disk
+                  - generic [ref=e496]: 45%
+                - img [ref=e497]
+              - generic [ref=e499]:
+                - generic [ref=e500]: Uptime
+                - text: 34 days
+          - generic [ref=e501] [cursor=pointer]:
+            - generic [ref=e502]:
+              - generic [ref=e503]:
+                - heading "Load-Balancer-01" [level=3] [ref=e504]
+                - paragraph [ref=e505]: Healthy
+              - generic [ref=e506]: ACTIVE
+            - generic [ref=e509]:
+              - generic [ref=e510]: CPU
+              - generic [ref=e511]: 42%
+            - generic [ref=e515]:
+              - generic [ref=e516]: RAM
+              - generic [ref=e517]: 77%
+            - generic [ref=e520]:
+              - generic [ref=e521]:
+                - generic [ref=e522]:
+                  - generic [ref=e523]: Disk
+                  - generic [ref=e524]: 45%
+                - img [ref=e525]
+              - generic [ref=e527]:
+                - generic [ref=e528]: Uptime
+                - text: 34 days
+          - generic [ref=e529] [cursor=pointer]:
+            - generic [ref=e530]:
+              - generic [ref=e531]:
+                - heading "Caching-Server-01" [level=3] [ref=e532]
+                - paragraph [ref=e533]: Healthy
+              - generic [ref=e534]: ACTIVE
+            - generic [ref=e537]:
+              - generic [ref=e538]: CPU
+              - generic [ref=e539]: 52%
+            - generic [ref=e543]:
+              - generic [ref=e544]: RAM
+              - generic [ref=e545]: 62%
+            - generic [ref=e548]:
+              - generic [ref=e549]:
+                - generic [ref=e550]:
+                  - generic [ref=e551]: Disk
+                  - generic [ref=e552]: 25%
+                - img [ref=e553]
+              - generic [ref=e555]:
+                - generic [ref=e556]: Uptime
+                - text: 18 days
+          - generic [ref=e557] [cursor=pointer]:
+            - generic [ref=e558]:
+              - generic [ref=e559]:
+                - heading "Build-Node-04" [level=3] [ref=e560]
+                - paragraph [ref=e561]: Healthy
+              - generic [ref=e562]: ACTIVE
+            - generic [ref=e565]:
+              - generic [ref=e566]: CPU
+              - generic [ref=e567]: 82%
+            - generic [ref=e571]:
+              - generic [ref=e572]: RAM
+              - generic [ref=e573]: 72%
+            - generic [ref=e576]:
+              - generic [ref=e577]:
+                - generic [ref=e578]:
+                  - generic [ref=e579]: Disk
+                  - generic [ref=e580]: 45%
+                - img [ref=e581]
+              - generic [ref=e583]:
+                - generic [ref=e584]: Uptime
+                - text: 34 days

@@ -1,5 +1,14 @@
 // Shared TypeScript interfaces — mirrors Rust structs
 
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  created_at: string;
+  server_count: number;
+}
+
 export interface Server {
   id: string;
   name: string;
@@ -9,6 +18,7 @@ export interface Server {
   auth_type: "password" | "key";
   group_name: string;
   last_seen: string | null;
+  project_id: string | null;
 }
 
 export interface ServerInfo {
@@ -32,6 +42,7 @@ export interface AddServerPayload {
   auth_type: "password" | "key";
   credential: string;
   group_name: string;
+  project_id: string | null;
 }
 
 export interface DeployHistory {

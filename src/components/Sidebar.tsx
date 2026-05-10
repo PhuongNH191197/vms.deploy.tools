@@ -5,12 +5,15 @@ import {
   Layers,
   Bell,
   Settings,
-  Cloud,
+  FolderKanban,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
   { icon: Home, label: "Dashboard", path: "/", color: "#31E8FF", glowColor: "rgba(49,232,255" },
+  { icon: FolderKanban, label: "projects", path: "/projects", color: "#F59E0B", glowColor: "rgba(245,158,11" },
+  { icon: Zap, label: "bulk deploy", path: "/bulk-deploy", color: "#22D3EE", glowColor: "rgba(34,211,238" },
   { icon: Rocket, label: "deployments", path: "/update", color: "#C084FC", glowColor: "rgba(192,132,252" },
   { icon: Layers, label: "infrastructure", path: "/setup", color: "#4ADE80", glowColor: "rgba(74,222,128" },
   { icon: Bell, label: "alerts", path: "/monitor", color: "#FB923C", glowColor: "rgba(251,146,60" },
@@ -21,25 +24,18 @@ export default function Sidebar() {
   return (
     <aside
       className="w-[220px] min-w-[220px] flex flex-col h-screen relative z-20 border-r border-white/[0.08] overflow-hidden"
-    // style={{
-    //   background: "rgba(11, 17, 32, 0.35)",
-    //   backdropFilter: "blur(24px)",
-    //   WebkitBackdropFilter: "blur(24px)",
-    // }}
+    style={{
+      zIndex: -999,
+    }}
     >
       {/* ── Brand ── */}
       <div className="pl-5 pt-10 pb-8">
         <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center relative overflow-hidden group shadow-neon-cyan/10"
-            style={{
-              background: "linear-gradient(135deg, #00F2FF, #AD00FF)",
-            }}
-          >
-            <Cloud className="text-white relative z-10" size={20} />
+          <div className="w-9 h-9 flex-shrink-0">
+            <img src="/logo.svg" alt="HawkNest" className="w-full h-full object-contain" />
           </div>
           <span className="text-[20px] font-bold tracking-tighter text-white">
-            TOOLS DEPLOYMENT
+            HawkNest
           </span>
         </div>
       </div>
@@ -114,10 +110,14 @@ export default function Sidebar() {
       </nav>
 
       {/* ── Bottom Info ── */}
-      <div className="pl-5 pb-8">
-        <div className="flex flex-col gap-1 opacity-20">
-          <span className="text-[9px] font-bold text-white uppercase tracking-[0.3em]">Infrastructure</span>
-          <span className="text-[10px] font-bold text-df-cyan">v1.0.0 Stable</span>
+      <div className="pl-6 pt-4 pb-[4.5rem] border-t border-white/10">
+        <div className="flex flex-col gap-1">
+          <span className="text-[9px] font-bold text-white/50 uppercase tracking-[0.25em]">VMS Deploy Tools</span>
+          <span className="text-[10px] font-semibold text-df-cyan/70">v1.0.0 Stable</span>
+        </div>
+        <div className="mt-3 flex flex-col gap-0.5">
+          <span className="text-[9px] text-white/40">Created by <span className="text-white/70 font-semibold">PhuongNH</span></span>
+          <span className="text-[9px] text-white/35">Apr – May 2026</span>
         </div>
       </div>
     </aside>

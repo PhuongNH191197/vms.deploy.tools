@@ -1,0 +1,82 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - img [ref=e9]
+      - generic [ref=e11]: TOOLS DEPLOYMENT
+    - navigation [ref=e12]:
+      - link "Dashboard" [ref=e13] [cursor=pointer]:
+        - /url: /
+        - img [ref=e16]
+        - generic [ref=e19]: Dashboard
+      - link "deployments" [ref=e20] [cursor=pointer]:
+        - /url: /update
+        - img [ref=e21]
+        - generic [ref=e26]: deployments
+      - link "infrastructure" [ref=e27] [cursor=pointer]:
+        - /url: /setup
+        - img [ref=e28]
+        - generic [ref=e32]: infrastructure
+      - link "alerts" [ref=e33] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e34]
+        - generic [ref=e37]: alerts
+      - link "settings" [ref=e38] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e39]
+        - generic [ref=e42]: settings
+    - generic [ref=e44]:
+      - generic [ref=e45]: Infrastructure
+      - generic [ref=e46]: v1.0.0 Stable
+  - main [ref=e47]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - heading "Infrastructure Overview" [level=1] [ref=e50]
+        # - generic [ref=e51]:
+        #   - generic [ref=e52]: "Project: AURORA-PROD"
+        #   - generic [ref=e53]: "|"
+        #   - generic [ref=e54]: 10 tháng 5, 2026
+        #   - generic [ref=e55]: "|"
+        #   - generic [ref=e56]: "Status: ● Healthy"
+      - button "Synchronize" [ref=e57] [cursor=pointer]:
+        - img
+        - text: Synchronize
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - tablist [ref=e62]:
+          - tab "all 6" [ref=e63] [cursor=pointer]:
+            - text: all
+            - generic [ref=e64]: "6"
+          - tab "production 4" [ref=e65] [cursor=pointer]:
+            - text: production
+            - generic [ref=e66]: "4"
+          - tab "staging 1" [active] [selected] [ref=e67] [cursor=pointer]:
+            - text: staging
+            - generic [ref=e68]: "1"
+          - tab "lab 1" [ref=e69] [cursor=pointer]:
+            - text: lab
+            - generic [ref=e70]: "1"
+        - button "THÊM SERVER" [ref=e71] [cursor=pointer]:
+          - img
+          - text: THÊM SERVER
+      - tabpanel "staging 1" [ref=e356]:
+        - generic [ref=e358] [cursor=pointer]:
+          - generic [ref=e359]:
+            - generic [ref=e360]:
+              - heading "Caching-Server-01" [level=3] [ref=e361]
+              - paragraph [ref=e362]: Healthy
+            - generic [ref=e363]: ACTIVE
+          - generic [ref=e366]:
+            - generic [ref=e367]: CPU
+            - generic [ref=e368]: 52%
+          - generic [ref=e372]:
+            - generic [ref=e373]: RAM
+            - generic [ref=e374]: 62%
+          - generic [ref=e377]:
+            - generic [ref=e378]:
+              - generic [ref=e379]:
+                - generic [ref=e380]: Disk
+                - generic [ref=e381]: 25%
+              - img [ref=e382]
+            - generic [ref=e384]:
+              - generic [ref=e385]: Uptime
+              - text: 18 days

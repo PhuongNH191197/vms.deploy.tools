@@ -1,0 +1,476 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - img "HawkNest" [ref=e9]
+      - generic [ref=e10]: HawkNest
+    - navigation [ref=e11]:
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - generic [ref=e16]: Dashboard
+      - link "projects" [ref=e17] [cursor=pointer]:
+        - /url: /projects
+        - img [ref=e18]
+        - generic [ref=e20]: projects
+      - link "bulk deploy" [ref=e21] [cursor=pointer]:
+        - /url: /bulk-deploy
+        - img [ref=e22]
+        - generic [ref=e24]: bulk deploy
+      - link "deployments" [ref=e25] [cursor=pointer]:
+        - /url: /update
+        - img [ref=e26]
+        - generic [ref=e31]: deployments
+      - link "infrastructure" [ref=e32] [cursor=pointer]:
+        - /url: /setup
+        - img [ref=e33]
+        - generic [ref=e37]: infrastructure
+      - link "alerts" [ref=e38] [cursor=pointer]:
+        - /url: /monitor
+        - img [ref=e41]
+        - generic [ref=e44]: alerts
+      - link "settings" [ref=e45] [cursor=pointer]:
+        - /url: /audit
+        - img [ref=e46]
+        - generic [ref=e49]: settings
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]: VMS Deploy Tools
+        - generic [ref=e53]: v1.0.0 Stable
+      - generic [ref=e54]:
+        - generic [ref=e55]: Created by PhuongNH
+        - generic [ref=e56]: Apr – May 2026
+  - main [ref=e57]:
+    - heading "Real-time System Monitoring" [level=1] [ref=e60]
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - button "VMS Production" [ref=e64] [cursor=pointer]:
+          - generic [ref=e66]: VMS Production
+          - img [ref=e67]
+        - generic [ref=e69]:
+          - generic [ref=e70]: 6 servers
+          - generic [ref=e71]: 14 running
+          - generic [ref=e72]:
+            - img [ref=e73]
+            - text: 1 alerts
+        - generic [ref=e75]:
+          - button "Auto" [ref=e77] [cursor=pointer]:
+            - img [ref=e78]
+            - text: Auto
+          - button "Refresh" [ref=e81] [cursor=pointer]:
+            - img
+            - text: Refresh
+      - generic [ref=e82]:
+        - paragraph [ref=e83]: Server Health Overview
+        - generic [ref=e84]:
+          - generic [ref=e85] [cursor=pointer]:
+            - generic [ref=e88]:
+              - paragraph [ref=e89]: server1
+              - paragraph [ref=e90]: 192.168.1.101
+            - generic [ref=e91]:
+              - generic [ref=e93]:
+                - generic [ref=e94]: CPU
+                - generic [ref=e95]: 45%
+              - generic [ref=e99]:
+                - generic [ref=e100]: RAM
+                - generic [ref=e101]: 62%
+              - generic [ref=e105]:
+                - generic [ref=e106]: Disk
+                - generic [ref=e107]: 38%
+            - generic [ref=e110]:
+              - generic [ref=e111]: Containers
+              - generic [ref=e112]:
+                - text: "3"
+                - generic [ref=e113]: / 3
+          - generic [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]:
+              - generic [ref=e117]:
+                - paragraph [ref=e118]: server2
+                - paragraph [ref=e119]: 192.168.1.102
+              - generic [ref=e120]: WARN
+            - generic [ref=e121]:
+              - generic [ref=e123]:
+                - generic [ref=e124]: CPU
+                - generic [ref=e125]: 82%
+              - generic [ref=e129]:
+                - generic [ref=e130]: RAM
+                - generic [ref=e131]: 91%
+              - generic [ref=e135]:
+                - generic [ref=e136]: Disk
+                - generic [ref=e137]: 55%
+            - generic [ref=e140]:
+              - generic [ref=e141]: Containers
+              - generic [ref=e142]:
+                - text: "2"
+                - generic [ref=e143]: / 3
+          - generic [ref=e144] [cursor=pointer]:
+            - generic [ref=e147]:
+              - paragraph [ref=e148]: server3
+              - paragraph [ref=e149]: 192.168.1.103
+            - generic [ref=e150]:
+              - generic [ref=e152]:
+                - generic [ref=e153]: CPU
+                - generic [ref=e154]: 23%
+              - generic [ref=e158]:
+                - generic [ref=e159]: RAM
+                - generic [ref=e160]: 41%
+              - generic [ref=e164]:
+                - generic [ref=e165]: Disk
+                - generic [ref=e166]: 20%
+            - generic [ref=e169]:
+              - generic [ref=e170]: Containers
+              - generic [ref=e171]:
+                - text: "3"
+                - generic [ref=e172]: / 3
+          - generic [ref=e173] [cursor=pointer]:
+            - generic [ref=e176]:
+              - paragraph [ref=e177]: server4
+              - paragraph [ref=e178]: 192.168.1.104
+            - generic [ref=e179]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: CPU
+                - generic [ref=e183]: 67%
+              - generic [ref=e187]:
+                - generic [ref=e188]: RAM
+                - generic [ref=e189]: 73%
+              - generic [ref=e193]:
+                - generic [ref=e194]: Disk
+                - generic [ref=e195]: 48%
+            - generic [ref=e198]:
+              - generic [ref=e199]: Containers
+              - generic [ref=e200]:
+                - text: "2"
+                - generic [ref=e201]: / 2
+          - generic [ref=e202] [cursor=pointer]:
+            - generic [ref=e205]:
+              - paragraph [ref=e206]: server5
+              - paragraph [ref=e207]: 192.168.1.105
+            - generic [ref=e208]:
+              - generic [ref=e210]:
+                - generic [ref=e211]: CPU
+                - generic [ref=e212]: 12%
+              - generic [ref=e216]:
+                - generic [ref=e217]: RAM
+                - generic [ref=e218]: 28%
+              - generic [ref=e222]:
+                - generic [ref=e223]: Disk
+                - generic [ref=e224]: 15%
+            - generic [ref=e227]:
+              - generic [ref=e228]: Containers
+              - generic [ref=e229]:
+                - text: "4"
+                - generic [ref=e230]: / 4
+          - generic [ref=e231] [cursor=pointer]:
+            - generic [ref=e232]:
+              - generic [ref=e234]:
+                - paragraph [ref=e235]: server6
+                - paragraph [ref=e236]: 192.168.1.106
+              - generic [ref=e237]: "OFF"
+            - generic [ref=e238]:
+              - generic [ref=e240]:
+                - generic [ref=e241]: CPU
+                - generic [ref=e242]: 0%
+              - generic [ref=e245]:
+                - generic [ref=e246]: RAM
+                - generic [ref=e247]: 0%
+              - generic [ref=e250]:
+                - generic [ref=e251]: Disk
+                - generic [ref=e252]: 0%
+            - generic [ref=e254]:
+              - generic [ref=e255]: Containers
+              - generic [ref=e256]:
+                - text: "0"
+                - generic [ref=e257]: / 2
+      - generic [ref=e258]:
+        - paragraph [ref=e260]: Container Overview
+        - generic [ref=e261]:
+          - generic [ref=e262]:
+            - combobox [ref=e263] [cursor=pointer]:
+              - generic: All Servers
+              - img [ref=e264]
+            - combobox [ref=e266] [cursor=pointer]:
+              - generic: All Status
+              - img [ref=e267]
+            - textbox "Search container name..." [ref=e270]
+            - generic [ref=e271]: 15 containers
+          - generic [ref=e272]:
+            - generic [ref=e273]:
+              - checkbox [ref=e275] [cursor=pointer]
+              - generic [ref=e276]: Server
+              - generic [ref=e277]: Container
+              - generic [ref=e278]: Image
+              - generic [ref=e279]: Status
+              - generic [ref=e280]: CPU
+              - generic [ref=e281]: RAM
+              - generic [ref=e282]: Uptime
+              - generic [ref=e283]: Actions
+            - generic [ref=e284]:
+              - generic [ref=e285]:
+                - checkbox [ref=e287] [cursor=pointer]
+                - generic [ref=e288]:
+                  - generic [ref=e289]: server1
+                  - generic [ref=e290]: 192.168.1.101
+                - generic [ref=e292]: vms_ai
+                - generic [ref=e294]: vms/ai:latest
+                - generic [ref=e296]: Running
+                - generic [ref=e298]: 0.8%
+                - generic [ref=e300]: 2.1%
+                - generic [ref=e302]: 2d 4h
+                - generic [ref=e303]:
+                  - button [ref=e304] [cursor=pointer]:
+                    - img [ref=e305]
+                  - button [ref=e308] [cursor=pointer]:
+                    - img [ref=e309]
+                  - button [ref=e312] [cursor=pointer]:
+                    - img [ref=e313]
+              - generic [ref=e315]:
+                - checkbox [ref=e317] [cursor=pointer]
+                - generic [ref=e318]:
+                  - generic [ref=e319]: server1
+                  - generic [ref=e320]: 192.168.1.101
+                - generic [ref=e322]: vms_api
+                - generic [ref=e324]: vms/api:latest
+                - generic [ref=e326]: Running
+                - generic [ref=e328]: 1.2%
+                - generic [ref=e330]: 3.4%
+                - generic [ref=e332]: 2d 4h
+                - generic [ref=e333]:
+                  - button [ref=e334] [cursor=pointer]:
+                    - img [ref=e335]
+                  - button [ref=e338] [cursor=pointer]:
+                    - img [ref=e339]
+                  - button [ref=e342] [cursor=pointer]:
+                    - img [ref=e343]
+              - generic [ref=e345]:
+                - checkbox [ref=e347] [cursor=pointer]
+                - generic [ref=e348]:
+                  - generic [ref=e349]: server1
+                  - generic [ref=e350]: 192.168.1.101
+                - generic [ref=e352]: vms_worker
+                - generic [ref=e354]: vms/worker:latest
+                - generic [ref=e356]: Running
+                - generic [ref=e358]: 0.5%
+                - generic [ref=e360]: 1.8%
+                - generic [ref=e362]: 2d 4h
+                - generic [ref=e363]:
+                  - button [ref=e364] [cursor=pointer]:
+                    - img [ref=e365]
+                  - button [ref=e368] [cursor=pointer]:
+                    - img [ref=e369]
+                  - button [ref=e372] [cursor=pointer]:
+                    - img [ref=e373]
+              - generic [ref=e375]:
+                - checkbox [ref=e377] [cursor=pointer]
+                - generic [ref=e378]:
+                  - generic [ref=e379]: server2
+                  - generic [ref=e380]: 192.168.1.102
+                - generic [ref=e382]: vms_ai
+                - generic [ref=e384]: vms/ai:latest
+                - generic [ref=e386]: Running
+                - generic [ref=e388]: 12.4%
+                - generic [ref=e390]: 18.2%
+                - generic [ref=e392]: 1d 12h
+                - generic [ref=e393]:
+                  - button [ref=e394] [cursor=pointer]:
+                    - img [ref=e395]
+                  - button [ref=e398] [cursor=pointer]:
+                    - img [ref=e399]
+                  - button [ref=e402] [cursor=pointer]:
+                    - img [ref=e403]
+              - generic [ref=e405]:
+                - checkbox [ref=e407] [cursor=pointer]
+                - generic [ref=e408]:
+                  - generic [ref=e409]: server2
+                  - generic [ref=e410]: 192.168.1.102
+                - generic [ref=e412]: vms_api
+                - generic [ref=e414]: vms/api:latest
+                - generic [ref=e416]: Exited
+                - generic [ref=e418]: 0%
+                - generic [ref=e420]: 0%
+                - generic [ref=e422]: —
+                - generic [ref=e423]:
+                  - button [ref=e424] [cursor=pointer]:
+                    - img [ref=e425]
+                  - button [ref=e428] [cursor=pointer]:
+                    - img [ref=e429]
+                  - button [ref=e432] [cursor=pointer]:
+                    - img [ref=e433]
+              - generic [ref=e435]:
+                - checkbox [ref=e437] [cursor=pointer]
+                - generic [ref=e438]:
+                  - generic [ref=e439]: server2
+                  - generic [ref=e440]: 192.168.1.102
+                - generic [ref=e442]: vms_worker
+                - generic [ref=e444]: vms/worker:latest
+                - generic [ref=e446]: Running
+                - generic [ref=e448]: 8.1%
+                - generic [ref=e450]: 11.5%
+                - generic [ref=e452]: 1d 12h
+                - generic [ref=e453]:
+                  - button [ref=e454] [cursor=pointer]:
+                    - img [ref=e455]
+                  - button [ref=e458] [cursor=pointer]:
+                    - img [ref=e459]
+                  - button [ref=e462] [cursor=pointer]:
+                    - img [ref=e463]
+              - generic [ref=e465]:
+                - checkbox [ref=e467] [cursor=pointer]
+                - generic [ref=e468]:
+                  - generic [ref=e469]: server3
+                  - generic [ref=e470]: 192.168.1.103
+                - generic [ref=e472]: vms_ai
+                - generic [ref=e474]: vms/ai:latest
+                - generic [ref=e476]: Running
+                - generic [ref=e478]: 0.3%
+                - generic [ref=e480]: 1.2%
+                - generic [ref=e482]: 5d 8h
+                - generic [ref=e483]:
+                  - button [ref=e484] [cursor=pointer]:
+                    - img [ref=e485]
+                  - button [ref=e488] [cursor=pointer]:
+                    - img [ref=e489]
+                  - button [ref=e492] [cursor=pointer]:
+                    - img [ref=e493]
+              - generic [ref=e495]:
+                - checkbox [ref=e497] [cursor=pointer]
+                - generic [ref=e498]:
+                  - generic [ref=e499]: server3
+                  - generic [ref=e500]: 192.168.1.103
+                - generic [ref=e502]: vms_api
+                - generic [ref=e504]: vms/api:latest
+                - generic [ref=e506]: Running
+                - generic [ref=e508]: 0.9%
+                - generic [ref=e510]: 2.8%
+                - generic [ref=e512]: 5d 8h
+                - generic [ref=e513]:
+                  - button [ref=e514] [cursor=pointer]:
+                    - img [ref=e515]
+                  - button [ref=e518] [cursor=pointer]:
+                    - img [ref=e519]
+                  - button [ref=e522] [cursor=pointer]:
+                    - img [ref=e523]
+              - generic [ref=e525]:
+                - checkbox [ref=e527] [cursor=pointer]
+                - generic [ref=e528]:
+                  - generic [ref=e529]: server3
+                  - generic [ref=e530]: 192.168.1.103
+                - generic [ref=e532]: vms_worker
+                - generic [ref=e534]: vms/worker:latest
+                - generic [ref=e536]: Running
+                - generic [ref=e538]: 0.4%
+                - generic [ref=e540]: 1.5%
+                - generic [ref=e542]: 5d 8h
+                - generic [ref=e543]:
+                  - button [ref=e544] [cursor=pointer]:
+                    - img [ref=e545]
+                  - button [ref=e548] [cursor=pointer]:
+                    - img [ref=e549]
+                  - button [ref=e552] [cursor=pointer]:
+                    - img [ref=e553]
+              - generic [ref=e555]:
+                - checkbox [ref=e557] [cursor=pointer]
+                - generic [ref=e558]:
+                  - generic [ref=e559]: server4
+                  - generic [ref=e560]: 192.168.1.104
+                - generic [ref=e562]: vms_ai
+                - generic [ref=e564]: vms/ai:latest
+                - generic [ref=e566]: Running
+                - generic [ref=e568]: 5.6%
+                - generic [ref=e570]: 8.3%
+                - generic [ref=e572]: 3d 2h
+                - generic [ref=e573]:
+                  - button [ref=e574] [cursor=pointer]:
+                    - img [ref=e575]
+                  - button [ref=e578] [cursor=pointer]:
+                    - img [ref=e579]
+                  - button [ref=e582] [cursor=pointer]:
+                    - img [ref=e583]
+              - generic [ref=e585]:
+                - checkbox [ref=e587] [cursor=pointer]
+                - generic [ref=e588]:
+                  - generic [ref=e589]: server4
+                  - generic [ref=e590]: 192.168.1.104
+                - generic [ref=e592]: vms_worker
+                - generic [ref=e594]: vms/worker:latest
+                - generic [ref=e596]: Running
+                - generic [ref=e598]: 4.2%
+                - generic [ref=e600]: 6.7%
+                - generic [ref=e602]: 3d 2h
+                - generic [ref=e603]:
+                  - button [ref=e604] [cursor=pointer]:
+                    - img [ref=e605]
+                  - button [ref=e608] [cursor=pointer]:
+                    - img [ref=e609]
+                  - button [ref=e612] [cursor=pointer]:
+                    - img [ref=e613]
+              - generic [ref=e615]:
+                - checkbox [ref=e617] [cursor=pointer]
+                - generic [ref=e618]:
+                  - generic [ref=e619]: server5
+                  - generic [ref=e620]: 192.168.1.105
+                - generic [ref=e622]: vms_ai
+                - generic [ref=e624]: vms/ai:latest
+                - generic [ref=e626]: Running
+                - generic [ref=e628]: 0.2%
+                - generic [ref=e630]: 0.8%
+                - generic [ref=e632]: 10d 6h
+                - generic [ref=e633]:
+                  - button [ref=e634] [cursor=pointer]:
+                    - img [ref=e635]
+                  - button [ref=e638] [cursor=pointer]:
+                    - img [ref=e639]
+                  - button [ref=e642] [cursor=pointer]:
+                    - img [ref=e643]
+              - generic [ref=e645]:
+                - checkbox [ref=e647] [cursor=pointer]
+                - generic [ref=e648]:
+                  - generic [ref=e649]: server5
+                  - generic [ref=e650]: 192.168.1.105
+                - generic [ref=e652]: vms_api
+                - generic [ref=e654]: vms/api:latest
+                - generic [ref=e656]: Running
+                - generic [ref=e658]: 0.5%
+                - generic [ref=e660]: 1.4%
+                - generic [ref=e662]: 10d 6h
+                - generic [ref=e663]:
+                  - button [ref=e664] [cursor=pointer]:
+                    - img [ref=e665]
+                  - button [ref=e668] [cursor=pointer]:
+                    - img [ref=e669]
+                  - button [ref=e672] [cursor=pointer]:
+                    - img [ref=e673]
+              - generic [ref=e675]:
+                - checkbox [ref=e677] [cursor=pointer]
+                - generic [ref=e678]:
+                  - generic [ref=e679]: server5
+                  - generic [ref=e680]: 192.168.1.105
+                - generic [ref=e682]: vms_worker
+                - generic [ref=e684]: vms/worker:latest
+                - generic [ref=e686]: Running
+                - generic [ref=e688]: 0.3%
+                - generic [ref=e690]: 0.9%
+                - generic [ref=e692]: 10d 6h
+                - generic [ref=e693]:
+                  - button [ref=e694] [cursor=pointer]:
+                    - img [ref=e695]
+                  - button [ref=e698] [cursor=pointer]:
+                    - img [ref=e699]
+                  - button [ref=e702] [cursor=pointer]:
+                    - img [ref=e703]
+              - generic [ref=e705]:
+                - checkbox [ref=e707] [cursor=pointer]
+                - generic [ref=e708]:
+                  - generic [ref=e709]: server5
+                  - generic [ref=e710]: 192.168.1.105
+                - generic [ref=e712]: nginx
+                - generic [ref=e714]: nginx:alpine
+                - generic [ref=e716]: Running
+                - generic [ref=e718]: 0.1%
+                - generic [ref=e720]: 0.3%
+                - generic [ref=e722]: 10d 6h
+                - generic [ref=e723]:
+                  - button [ref=e724] [cursor=pointer]:
+                    - img [ref=e725]
+                  - button [ref=e728] [cursor=pointer]:
+                    - img [ref=e729]
+                  - button [ref=e732] [cursor=pointer]:
+                    - img [ref=e733]

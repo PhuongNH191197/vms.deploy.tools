@@ -7,17 +7,8 @@ import { GlowBackground } from "./GlowBackground";
 import { useLocation } from "react-router-dom";
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const [dateStr, setDateStr] = useState("");
   const location = useLocation();
   const isDashboard = location.pathname === "/" || location.pathname === "/dashboard";
-
-  useEffect(() => {
-    setDateStr(new Date().toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }));
-  }, []);
 
   const [scrollOffset, setScrollOffset] = useState(0);
 
@@ -39,6 +30,10 @@ export default function Layout({ children }: { children: ReactNode }) {
       case "/":
       case "/dashboard":
         return "Infrastructure Overview";
+      case "/projects":
+        return "Projects & Environments";
+      case "/bulk-deploy":
+        return "Bulk Deploy";
       case "/update":
         return "Deployments & Releases";
       case "/setup":
@@ -99,19 +94,13 @@ export default function Layout({ children }: { children: ReactNode }) {
               backgroundColor: scrollOffset > 0 ? `rgba(10, 18, 36, ${opacity})` : 'transparent',
               backdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
               WebkitBackdropFilter: scrollOffset > 0 ? `blur(${blur}px)` : 'none',
+              zIndex: -999,
             }}
           >
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-white leading-none uppercase">
                 {getPageTitle(location.pathname)}
               </h1>
-              <div className="flex items-center gap-3 mt-2.5 text-[11px] font-medium text-df-text-secondary opacity-70">
-                <span>Project: <span className="text-white">AURORA-PROD</span></span>
-                <span className="text-white/10 mx-1">|</span>
-                <span>{dateStr}</span>
-                <span className="text-white/10 mx-1">|</span>
-                <span>Status: <span className="text-df-green font-bold">● Healthy</span></span>
-              </div>
             </div>
 
             {isDashboard && (

@@ -191,11 +191,11 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Testing wizard Step1→Step7 với Docker server 127.0.0.1:2222 — fix loạt bugs UX + install reliability
+LAST_ACTION: Redesign trang Monitor hoàn toàn — 4-part layout với mock data, Playwright verified
 CURRENT_FILE: —
-NEXT_STEP: Test tiếp Step3→Step7 end-to-end (Step1+Step2 đã pass). Cần build lại app trước khi test (có thay đổi Rust).
+NEXT_STEP: Commit session 2026-05-10, sau đó kết nối Monitor với Tauri backend thực (thay mock data)
 BLOCKED_BY: —
-NOTES: tsc 0 errors, cargo check 0 errors 4 pre-existing warnings. Chưa commit session hôm nay.
+NOTES: tsc 0 errors. Chưa commit. Wizard session 2026-05-08 cũng chưa commit (cần commit cả 2).
 
 ### Test environment (Docker server):
 - Container: `vms-test-server` → `127.0.0.1:2222`, root/Elcom@123
@@ -203,33 +203,30 @@ NOTES: tsc 0 errors, cargo check 0 errors 4 pre-existing warnings. Chưa commit 
 - Compose test file: `C:\test-vms\minio\docker-compose.yml`
 - Start container nếu tắt: `docker start vms-test-server`
 
-### Bugs đã fix SESSION HÔM NAY (2026-05-08):
-1. **Step3 không skip được** — `disabled={!allOk && networkResults.length === 0}` → `disabled={validInputs.length > 0 && !allOk}`
-2. **Step4 không skip được** — bỏ `disabled={selected.length === 0}`
-3. **Step7 không upload docker-compose.yml cho apps** — extract `generateCombinedCompose` → `src/lib/composeGenerator.ts`, Step7 auto-upload trước khi chạy app commands
-4. **Step2 Install All chạy parallel** — rewrite hoàn toàn: sequential `for...of await`, log panel tích lũy, per-tool recheck ngay sau install → checkmark xanh tức thì
-5. **install_env_tool luôn return Ok(()) dù fail** — giờ return `Err` khi output chứa `__ERROR__` → frontend log `✗ failed` đúng
-6. **dpkg lock khi install** — Ubuntu 18.04 background `unattended-upgrades` giữ lock → fix: `apt_retry()` dùng `flock -w 60s` chờ lock free thay vì kill process
-7. **apt-get update chạy N lần** — tách thành `run_apt_update` Tauri command, chạy 1 lần trước toàn bộ install loop; mỗi tool chỉ `apt-get install`
+### Files thay đổi SESSION 2026-05-10 (Monitor Redesign):
+- `src/types/monitor.ts` — NEW: MockServer, MockContainer, MonitorProject, LogPanelLayout types
+- `src/store/monitorStore.ts` — EXTENDED: giữ polling logic, thêm UI state (project, selection, modal, filter, autoRefresh)
+- `src/components/ServerCard.tsx` — REWRITE: compact 220px health card (CPU/RAM/Disk bars, status dot, container count)
+- `src/components/LogPanel.tsx` — REWRITE: mock streaming log panel (setInterval, no xterm.js, color-coded levels)
+- `src/components/MultiLogViewer.tsx` — NEW: fullscreen modal, auto grid (1/2/3/4 col), shared command input
+- `src/components/ContainerTable.tsx` — NEW: unified table, filter bar, checkboxes, sticky selection bar
+- `src/pages/Monitor.tsx` — REWRITE: 4-part layout (Header + Server overview + Container table + Log modal)
 
-### Files thay đổi SESSION HÔM NAY:
-- `src/components/wizard/Step2EnvCheck.tsx` — rewrite hoàn toàn (sequential install, real-time log, per-tool recheck)
+### Tính năng Monitor mới (UI-only mock data, Playwright tested):
+1. Header: project selector dropdown, badges (servers/running/alerts), Refresh, Auto-refresh ON/OFF + 5s/10s/30s
+2. Server Health Overview: 6 cards scroll ngang, status dot, 3 mini metric bars, WARNING/OFFLINE style
+3. Container Table: filter by server/status/search, checkbox multi-select, status badges, action buttons (Logs/Restart/Stop)
+4. Sticky bar: slide-up khi có checkbox selection, "N containers selected", [Xem Logs] [Restart All] [Clear]
+5. Multi-Log Viewer: fullscreen modal opaque, auto grid layout, mock streaming logs, Pause/Clear/Download/Search
+
+### Files thay đổi SESSION 2026-05-08 (Wizard Bugs — chưa commit):
+- `src/components/wizard/Step2EnvCheck.tsx` — sequential install, real-time log, per-tool recheck
 - `src/components/wizard/Step3Networks.tsx` — fix skip condition
 - `src/components/wizard/Step4Externals.tsx` — bỏ mandatory disabled
-- `src/components/wizard/Step7Deploy.tsx` — auto-upload compose cho apps, import composeGenerator
-- `src/components/wizard/Step6Apps.tsx` — import từ composeGenerator thay vì define local
-- `src/lib/composeGenerator.ts` — NEW: shared generateCombinedCompose utility
-- `src/lib/tauri/commands.ts` — thêm `runAptUpdate`
-- `src-tauri/src/commands/env_check.rs` — apt_retry(), apt_update_cmd(), run_apt_update command, install_env_tool return Err on fail, install_command return Option<String>
+- `src/components/wizard/Step7Deploy.tsx` — auto-upload compose cho apps
+- `src/components/wizard/Step6Apps.tsx` — import từ composeGenerator
+- `src/lib/composeGenerator.ts` — NEW: shared generateCombinedCompose
+- `src/lib/tauri/commands.ts` — thêm runAptUpdate
+- `src-tauri/src/commands/env_check.rs` — apt_retry, run_apt_update, fix install return Err
 - `src-tauri/src/lib.rs` — register run_apt_update
-- `build-release.bat` — NEW: one-click build .msi + .exe
-
-### Bugs đã fix SESSION TRƯỚC (tham khảo):
-1. Step2 EnvCheck sai kết quả — `command -v` gate
-2. Install tool báo Done nhưng chưa cài — root detection, DEBIAN_FRONTEND
-3. Tool list cứng frontend → backend-driven list_supported_tools()
-4. Nút "← Home" thiếu ở Setup page
-5. docker-compose.yml không upload — Step7 upload tar + compose trước docker commands
-6. tarPath hardcoded sai
-7. composeFolderPath chỉ show offline
-8. SFTP file không flush — file.shutdown().await
+- `build-release.bat` — NEW: one-click build

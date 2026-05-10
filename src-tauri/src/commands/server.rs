@@ -23,6 +23,7 @@ pub struct AddServerPayload {
     pub auth_type: String, // "password" | "key"
     pub credential: String, // plaintext password or key path
     pub group_name: String,
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,6 +36,7 @@ pub struct ServerDto {
     pub auth_type: String,
     pub group_name: String,
     pub last_seen: Option<String>,
+    pub project_id: Option<String>,
 }
 
 impl From<ServerRow> for ServerDto {
@@ -48,6 +50,7 @@ impl From<ServerRow> for ServerDto {
             auth_type: r.auth_type,
             group_name: r.group_name,
             last_seen: r.last_seen,
+            project_id: r.project_id,
         }
     }
 }
@@ -71,6 +74,7 @@ pub async fn add_server(
         auth_type: payload.auth_type,
         credential_plain: payload.credential,
         group_name: payload.group_name,
+        project_id: payload.project_id,
     };
 
     server_repo::insert_server(&state.0, &input, encrypted)

@@ -1,273 +1,259 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Terminal as XTerm } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Trash2, Download, Search, X, Terminal } from "lucide-react";
-import "@xterm/xterm/css/xterm.css";
+import { Pause, Play, Trash2, Download, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface LogLine {
-  line: string;
-  done: boolean;
-}
-
-interface ConnInfo {
-  host: string;
-  port: number;
-  username: string;
-  authType: string;
-  credential: string;
-}
+import type { MockContainer } from "@/types/monitor";
 
 interface Props {
-  container: string;
-  conn: ConnInfo;
-  onClose: () => void;
+  container: MockContainer;
+  command: string;
 }
 
-const TAIL_OPTIONS = [100, 200, 500, 1000] as const;
+type LogLevel = "INFO" | "DEBUG" | "WARN" | "ERROR";
 
-export default function LogPanel({ container, conn, onClose }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const termRef = useRef<XTerm | null>(null);
-  const fitRef = useRef<FitAddon | null>(null);
-  const linesRef = useRef<string[]>([]);
-  const unlistenRef = useRef<(() => void) | null>(null);
-  const eventIdRef = useRef(`logs-${container}-${Date.now()}`);
+interface LogLine {
+  id: number;
+  time: string;
+  level: LogLevel;
+  msg: string;
+}
 
+const LOG_POOL: Array<{ level: LogLevel; msgs: string[] }> = [
+  {
+    level: "INFO",
+    msgs: [
+      "Application heartbeat OK",
+      "Listening on port 5000",
+      "Request processed in 42ms",
+      "Health check passed",
+      "Connected to database",
+      "Cache hit ratio: 94.2%",
+      "Worker thread ready",
+      "Scheduled task completed",
+    ],
+  },
+  {
+    level: "DEBUG",
+    msgs: [
+      "Connecting to database...",
+      "Session token refreshed",
+      "Memory GC triggered",
+      "Config reloaded from disk",
+      "Worker thread idle",
+      "Queue depth: 0",
+    ],
+  },
+  {
+    level: "WARN",
+    msgs: [
+      "High memory usage detected: 78%",
+      "Slow query detected: 2300ms",
+      "Retry attempt 2/3",
+      "Rate limit approaching: 85%",
+      "Disk write latency elevated",
+    ],
+  },
+  {
+    level: "ERROR",
+    msgs: [
+      "Failed to process request: timeout",
+      "Connection refused: redis:6379",
+      "Unhandled exception in worker",
+      "Circuit breaker tripped",
+    ],
+  },
+];
+
+function pickLog(id: number): LogLine {
+  const now = new Date();
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
+  const r = Math.random();
+  const bucket =
+    r < 0.5 ? LOG_POOL[0] : r < 0.75 ? LOG_POOL[1] : r < 0.9 ? LOG_POOL[2] : LOG_POOL[3];
+  const msg = bucket.msgs[Math.floor(Math.random() * bucket.msgs.length)];
+  return { id, time, level: bucket.level, msg };
+}
+
+const LEVEL_CLASS: Record<LogLevel, string> = {
+  INFO: "text-[#22d3ee]",
+  DEBUG: "text-[#4b5563]",
+  WARN: "text-[#fbbf24]",
+  ERROR: "text-[#f87171]",
+};
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-[#ffaa00]/30 text-[#fbbf24] rounded-sm px-0.5 not-italic">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+export default function LogPanel({ container, command }: Props) {
+  const [lines, setLines] = useState<LogLine[]>(() =>
+    Array.from({ length: 10 }, (_, i) => pickLog(i))
+  );
   const [paused, setPaused] = useState(false);
-  const [streaming, setStreaming] = useState(false);
-  const [tail, setTail] = useState<number>(200);
   const [search, setSearch] = useState("");
+  const counterRef = useRef(10);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
 
-  // Init xterm
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const term = new XTerm({
-      theme: { 
-        background: "#070B14", // deep navy base
-        foreground: "#E2E8F0", 
-        cursor: "#22D3EE",
-        black: "#000000",
-        red: "#F87171",
-        green: "#34D399",
-        yellow: "#FBBF24",
-        blue: "#818CF8",
-        magenta: "#A855F7",
-        cyan: "#22D3EE",
-        white: "#FFFFFF",
-        selectionBackground: "rgba(34, 211, 238, 0.2)"
-      },
-      fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-      fontSize: 13,
-      lineHeight: 1.4,
-      scrollback: 10000,
-      convertEol: true,
-    });
-    const fit = new FitAddon();
-    term.loadAddon(fit);
-    term.open(containerRef.current);
-    fit.fit();
-    termRef.current = term;
-    fitRef.current = fit;
-    const ro = new ResizeObserver(() => fit.fit());
-    ro.observe(containerRef.current);
-    return () => { ro.disconnect(); term.dispose(); };
+  pausedRef.current = paused;
+
+  const addLine = useCallback(() => {
+    if (pausedRef.current) return;
+    const line = pickLog(counterRef.current++);
+    setLines((prev) => [...prev.slice(-499), line]);
   }, []);
 
-  const writeLine = useCallback((line: string) => {
-    const term = termRef.current;
-    if (!term) return;
-    
-    // Simple colorization based on content
-    let formatted = line;
-    if (line.toLowerCase().includes("error") || line.toLowerCase().includes("fail")) {
-      formatted = `\x1b[31m${line}\x1b[0m`; // Red
-    } else if (line.toLowerCase().includes("warn")) {
-      formatted = `\x1b[33m${line}\x1b[0m`; // Yellow
-    } else if (line.toLowerCase().includes("success") || line.toLowerCase().includes("done")) {
-      formatted = `\x1b[32m${line}\x1b[0m`; // Green
-    }
-
-    if (search && !line.toLowerCase().includes(search.toLowerCase())) {
-      term.write(`\x1b[2m${line}\x1b[0m\r\n`); // dim non-matching
-    } else if (search) {
-      // Highlight matching part
-      const idx = line.toLowerCase().indexOf(search.toLowerCase());
-      const before = line.slice(0, idx);
-      const match = line.slice(idx, idx + search.length);
-      const after = line.slice(idx + search.length);
-      term.write(`${before}\x1b[33;1m${match}\x1b[0m${after}\r\n`);
-    } else {
-      term.write(formatted + "\r\n");
-    }
-  }, [search]);
-
-  const startStream = useCallback(async (tailN: number) => {
-    // Stop existing stream
-    if (unlistenRef.current) {
-      unlistenRef.current();
-      unlistenRef.current = null;
-      invoke("stop_log_stream", { eventId: eventIdRef.current }).catch(() => {});
-    }
-
-    // Generate new event id
-    eventIdRef.current = `logs-${container}-${Date.now()}`;
-    linesRef.current = [];
-    termRef.current?.clear();
-    termRef.current?.write(`\x1b[38;5;13m>>> INITIALIZING STREAM FOR: ${container.toUpperCase()}\x1b[0m\r\n`);
-    termRef.current?.write(`\x1b[38;5;14m>>> RETRIEVING LAST ${tailN} LINES...\x1b[0m\r\n\r\n`);
-
-    setStreaming(true);
-    setPaused(false);
-
-    const unlisten = await listen<LogLine>(eventIdRef.current, (ev) => {
-      const { line, done } = ev.payload;
-      if (done) {
-        setStreaming(false);
-        return;
-      }
-      linesRef.current.push(line);
-      writeLine(line);
-    });
-    unlistenRef.current = unlisten;
-
-    invoke("stream_container_logs", {
-      host: conn.host, port: conn.port, username: conn.username,
-      authType: conn.authType, credential: conn.credential,
-      container, tail: tailN, eventId: eventIdRef.current,
-    }).catch((e) => {
-      termRef.current?.write(`\r\n\x1b[31m[CRITICAL ERROR]: ${e}\x1b[0m\r\n`);
-      setStreaming(false);
-    });
-  }, [container, conn, writeLine]);
-
-  // Auto-start on mount
   useEffect(() => {
-    startStream(tail);
-    return () => {
-      unlistenRef.current?.();
-      invoke("stop_log_stream", { eventId: eventIdRef.current }).catch(() => {});
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const id = setInterval(addLine, 600 + Math.random() * 1400);
+    return () => clearInterval(id);
+  }, [addLine]);
 
-  const handlePause = () => {
-    if (!paused) {
-      unlistenRef.current?.();
-      unlistenRef.current = null;
-      invoke("stop_log_stream", { eventId: eventIdRef.current }).catch(() => {});
-      setStreaming(false);
-      setPaused(true);
-    } else {
-      startStream(tail);
+  useEffect(() => {
+    if (!paused && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  };
-
-  const handleClear = () => {
-    termRef.current?.clear();
-    linesRef.current = [];
-  };
+  }, [lines, paused]);
 
   const handleDownload = () => {
-    const content = linesRef.current.join("\n");
+    const content = lines
+      .map((l) => `[${l.time}] ${l.level.padEnd(5)} ${l.msg}`)
+      .join("\n");
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${container}-logs.txt`;
+    a.download = `${container.serverName}-${container.name}.log`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleTailChange = (t: number) => {
-    setTail(t);
-    startStream(t);
-  };
+  const filtered = search
+    ? lines.filter(
+        (l) =>
+          l.msg.toLowerCase().includes(search.toLowerCase()) ||
+          l.level.toLowerCase().includes(search.toLowerCase())
+      )
+    : lines;
 
-  // Re-render terminal on search change (highlight)
-  useEffect(() => {
-    const term = termRef.current;
-    if (!term) return;
-    term.clear();
-    linesRef.current.forEach((l) => writeLine(l));
-  }, [search, writeLine]);
+  const isRunning = container.status === "running";
 
   return (
-    <div className="flex flex-col glass-card rounded-2xl overflow-hidden border-white/5 shadow-2xl h-full animate-fade-in">
+    <div
+      className="flex flex-col h-full rounded-xl overflow-hidden border border-white/[0.08]"
+      style={{ background: "#0b0b18" }}
+    >
+      {/* Panel header */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] shrink-0" style={{ background: "rgba(255,255,255,0.03)" }}>
+        <div
+          className={cn("w-1.5 h-1.5 rounded-full shrink-0", isRunning && "animate-pulse-glow")}
+          style={{
+            background: isRunning ? "#00ff88" : "#ff4444",
+            boxShadow: isRunning ? "0 0 6px #00ff8888" : "0 0 6px #ff444488",
+          }}
+        />
+        <span className="text-[10px] font-bold text-white/60 font-mono truncate flex-1">
+          {container.serverName} / {container.name}
+        </span>
+        <span className="text-[9px] text-white/25 shrink-0 tabular-nums">CPU: {container.cpu}</span>
+        <span className="text-[9px] text-white/25 shrink-0 tabular-nums ml-2">MEM: {container.ram}</span>
+      </div>
+
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.02] border-b border-white/[0.05]">
-        <div className="flex items-center gap-2 mr-2 shrink-0">
-           <Terminal size={14} className="text-df-purple" />
-           <span className="text-[11px] font-black text-df-text-primary uppercase tracking-widest">{container}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {streaming && <Badge className="badge-active text-[9px] px-2 py-0 h-5">LIVE</Badge>}
-          {paused && <Badge className="bg-df-orange/20 text-df-orange border-df-orange/30 text-[9px] px-2 py-0 h-5">PAUSED</Badge>}
-        </div>
-
-        <div className="h-4 w-px bg-white/10 mx-2" />
-
-        <div className="flex items-center gap-1">
-          {TAIL_OPTIONS.map((t) => (
-            <button
-              key={t}
-              onClick={() => handleTailChange(t)}
-              className={cn(
-                "text-[9px] font-black tracking-widest px-2.5 py-1 rounded-lg border transition-all uppercase",
-                tail === t 
-                  ? "bg-df-cyan/10 border-df-cyan text-df-cyan shadow-neon-cyan/20" 
-                  : "bg-white/5 border-white/10 text-df-text-secondary hover:border-white/30"
-              )}
-            >
-              {t}L
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 max-w-xs relative ml-4">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-df-text-secondary opacity-50" />
-          <Input
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/[0.04] shrink-0"
+        style={{ background: "rgba(255,255,255,0.015)" }}
+      >
+        <button
+          onClick={() => setPaused((v) => !v)}
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase border border-white/[0.08] text-white/40 hover:text-white hover:border-white/20 transition-all"
+        >
+          {paused ? (
+            <Play size={9} className="text-[#00ff88]" />
+          ) : (
+            <Pause size={9} className="text-[#ffaa00]" />
+          )}
+          {paused ? "Resume" : "Pause"}
+        </button>
+        <button
+          onClick={() => setLines([])}
+          className="p-1 rounded border border-white/[0.08] text-white/30 hover:text-[#ff4444] hover:border-[#ff4444]/20 transition-all"
+          title="Clear"
+        >
+          <Trash2 size={10} />
+        </button>
+        <button
+          onClick={handleDownload}
+          className="p-1 rounded border border-white/[0.08] text-white/30 hover:text-[#00d4ff] hover:border-[#00d4ff]/20 transition-all"
+          title="Download"
+        >
+          <Download size={10} />
+        </button>
+        <div className="flex-1 relative ml-1">
+          <Search size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/20" />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search logs..."
-            className="h-8 text-[11px] pl-9 pr-8 input-glass rounded-xl border-white/5"
+            placeholder="Search..."
+            className="w-full rounded text-[10px] text-white/60 pl-5 pr-5 py-0.5 outline-none transition-all font-mono border border-white/[0.06] focus:border-[#00d4ff]/20"
+            style={{ background: "rgba(255,255,255,0.04)" }}
           />
-          {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-df-text-secondary hover:text-df-cyan"><X size={12} /></button>}
-        </div>
-
-        <div className="flex items-center gap-1 ml-auto">
-          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handlePause} title={paused ? "Resume" : "Pause"}>
-            {paused ? <Play size={14} className="text-df-green" /> : <Pause size={14} className="text-df-orange" />}
-          </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handleClear} title="Clear">
-            <Trash2 size={14} className="text-df-red" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl" onClick={handleDownload} title="Download">
-            <Download size={14} className="text-df-cyan" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 btn-ghost-glass rounded-xl ml-2 hover:bg-df-red/20" onClick={onClose} title="Close">
-            <X size={16} className="text-df-text-secondary hover:text-df-red" />
-          </Button>
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/25 hover:text-white"
+            >
+              <X size={9} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Terminal Area */}
-      <div className="flex-1 min-h-[400px] p-2 bg-[#070B14] relative group">
-        <div ref={containerRef} className="h-full w-full" />
-        {/* Subtle Scanline Overlay */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.02] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
-      </div>
-
-      {/* Footer Status */}
-      <div className="px-4 py-2 border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
-         <span className="text-[9px] font-black text-df-text-secondary uppercase tracking-[0.2em] opacity-40 italic">Secure TTY Connection Established</span>
-         <span className="text-[9px] font-black text-df-cyan uppercase tracking-[0.2em]">{linesRef.current.length} lines cached</span>
+      {/* Log area */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-2.5 custom-scrollbar"
+        style={{ fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace" }}
+      >
+        {command && (
+          <div
+            className="text-[10px] mb-2 pb-2 border-b border-white/[0.04]"
+            style={{ color: "rgba(0,212,255,0.5)" }}
+          >
+            $ {command}
+          </div>
+        )}
+        {filtered.map((line) => {
+          const dimmed = search && !line.msg.toLowerCase().includes(search.toLowerCase()) && !line.level.toLowerCase().includes(search.toLowerCase());
+          return (
+            <div
+              key={line.id}
+              className={cn(
+                "flex gap-2 px-1 py-[1px] rounded hover:bg-white/[0.02] transition-colors text-[11px] leading-[1.65]",
+                dimmed && "opacity-25"
+              )}
+            >
+              <span className="text-white/20 shrink-0 tabular-nums">[{line.time}]</span>
+              <span className={cn("font-bold shrink-0 w-11", LEVEL_CLASS[line.level])}>
+                {line.level}
+              </span>
+              <span className="text-white/65 flex-1 break-all">
+                <HighlightedText text={line.msg} query={search} />
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

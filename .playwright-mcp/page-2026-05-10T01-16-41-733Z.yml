@@ -1,0 +1,252 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - complementary:
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - generic: TOOLS DEPLOYMENT
+          - navigation:
+            - link:
+              - /url: /
+              - img
+              - generic: Dashboard
+            - link:
+              - /url: /update
+              - img
+              - generic: deployments
+            - link:
+              - /url: /setup
+              - img
+              - generic: infrastructure
+            - link:
+              - /url: /monitor
+              - img
+              - generic: alerts
+            - link:
+              - /url: /audit
+              - img
+              - generic: settings
+          - generic:
+            - generic:
+              - generic: Infrastructure
+              - generic: v1.0.0 Stable
+        - main:
+          - generic:
+            - generic:
+              - heading [level=1]: Infrastructure Overview
+              # - generic:
+              #   - generic: "Project: AURORA-PROD"
+              #   - generic: "|"
+              #   - generic: 10 tháng 5, 2026
+              #   - generic: "|"
+              #   - generic: "Status: ● Healthy"
+            - button:
+              - img
+              - text: Synchronize
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - tablist:
+                    - tab [selected]:
+                      - text: all
+                      - generic: "6"
+                    - tab:
+                      - text: production
+                      - generic: "4"
+                    - tab:
+                      - text: staging
+                      - generic: "1"
+                    - tab:
+                      - text: lab
+                      - generic: "1"
+                  - button:
+                    - img
+                    - text: THÊM SERVER
+                - tabpanel:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: Web-Server-01
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 78%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 62%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 45%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 34 days
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: API-Gateway-03
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 55%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 71%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 45%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 39 days
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: Database-Cluster-02
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 81%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 67%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 45%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 34 days
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: Load-Balancer-01
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 42%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 77%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 45%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 34 days
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: Caching-Server-01
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 52%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 62%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 25%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 18 days
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=3]: Build-Node-04
+                          - paragraph: Healthy
+                        - generic: ACTIVE
+                      - generic:
+                        - generic:
+                          - generic: CPU
+                          - generic: 82%
+                      - generic:
+                        - generic:
+                          - generic: RAM
+                          - generic: 72%
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: Disk
+                            - generic: 45%
+                          - img
+                        - generic:
+                          - generic: Uptime
+                          - text: 34 days
+  - dialog "Thêm Server Mới" [ref=e243]:
+    - generic [ref=e245]:
+      - img [ref=e247]
+      - heading "Thêm Server Mới" [level=2] [ref=e250]
+    - generic [ref=e251]:
+      - generic [ref=e252]:
+        - generic [ref=e253]:
+          - generic [ref=e254]: Tên Hiển Thị
+          - textbox "Prod-01" [active] [ref=e255]
+        - generic [ref=e256]:
+          - generic [ref=e257]: Nhóm Server
+          - combobox [ref=e258] [cursor=pointer]:
+            - generic: Lab
+            - img [ref=e259]
+      - generic [ref=e261]:
+        - generic [ref=e262]:
+          - generic [ref=e263]: Host / IP Address
+          - textbox "192.168.1.100" [ref=e264]
+        - generic [ref=e265]:
+          - generic [ref=e266]: SSH Port
+          - spinbutton [ref=e267]: "22"
+      - generic [ref=e268]:
+        - generic [ref=e269]:
+          - generic [ref=e270]: Username
+          - textbox [ref=e271]: root
+        - generic [ref=e272]:
+          - generic [ref=e273]: Xác Thực
+          - combobox [ref=e274] [cursor=pointer]:
+            - generic: Password
+            - img [ref=e275]
+      - generic [ref=e277]:
+        - generic [ref=e278]: SSH Password
+        - generic [ref=e279]:
+          - textbox "••••••••" [ref=e280]
+          - button [ref=e281] [cursor=pointer]:
+            - img [ref=e282]
+      - generic [ref=e285]:
+        - button "Test Link" [disabled]
+    - generic [ref=e286]:
+      - button "Hủy" [ref=e287] [cursor=pointer]
+      - button "Lưu Cấu Hình" [ref=e288] [cursor=pointer]
+    - button "Close" [ref=e289] [cursor=pointer]:
+      - img [ref=e290]
+      - generic [ref=e293]: Close

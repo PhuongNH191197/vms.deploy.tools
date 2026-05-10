@@ -14,6 +14,7 @@ pub struct ServerRow {
     pub credential: Vec<u8>,
     pub group_name: String,
     pub last_seen: Option<String>,
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -25,14 +26,15 @@ pub struct CreateServerInput {
     pub auth_type: String,
     pub credential_plain: String,
     pub group_name: String,
+    pub project_id: Option<String>,
 }
 
 pub async fn insert_server(pool: &SqlitePool, input: &CreateServerInput, encrypted_credential: Vec<u8>) -> Result<String, AppError> {
     let id = Uuid::new_v4().to_string();
 
     sqlx::query(
-        "INSERT INTO servers (id, name, host, port, username, auth_type, credential, group_name)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO servers (id, name, host, port, username, auth_type, credential, group_name, project_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(&id)
     .bind(&input.name)
@@ -42,6 +44,7 @@ pub async fn insert_server(pool: &SqlitePool, input: &CreateServerInput, encrypt
     .bind(&input.auth_type)
     .bind(&encrypted_credential)
     .bind(&input.group_name)
+    .bind(&input.project_id)
     .execute(pool)
     .await?;
 
@@ -50,7 +53,7 @@ pub async fn insert_server(pool: &SqlitePool, input: &CreateServerInput, encrypt
 
 pub async fn get_all_servers(pool: &SqlitePool) -> Result<Vec<ServerRow>, AppError> {
     let rows = sqlx::query_as::<_, ServerRow>(
-        "SELECT id, name, host, port, username, auth_type, credential, group_name, last_seen FROM servers ORDER BY name"
+        "SELECT id, name, host, port, username, auth_type, credential, group_name, last_seen, project_id FROM servers ORDER BY name"
     )
     .fetch_all(pool)
     .await?;
@@ -60,7 +63,7 @@ pub async fn get_all_servers(pool: &SqlitePool) -> Result<Vec<ServerRow>, AppErr
 
 pub async fn get_server_by_id(pool: &SqlitePool, id: &str) -> Result<ServerRow, AppError> {
     let row = sqlx::query_as::<_, ServerRow>(
-        "SELECT id, name, host, port, username, auth_type, credential, group_name, last_seen FROM servers WHERE id = ?"
+        "SELECT id, name, host, port, username, auth_type, credential, group_name, last_seen, project_id FROM servers WHERE id = ?"
     )
     .bind(id)
     .fetch_optional(pool)
@@ -71,11 +74,15 @@ pub async fn get_server_by_id(pool: &SqlitePool, id: &str) -> Result<ServerRow, 
 }
 
 pub async fn delete_server(pool: &SqlitePool, id: &str) -> Result<(), AppError> {
+    // snapshots references deploy_history, so delete first
+    sqlx::query("DELETE FROM snapshots WHERE server_id = ?")
+        .bind(id).execute(pool).await?;
+    sqlx::query("DELETE FROM deploy_history WHERE server_id = ?")
+        .bind(id).execute(pool).await?;
+    sqlx::query("DELETE FROM metrics_history WHERE server_id = ?")
+        .bind(id).execute(pool).await?;
     sqlx::query("DELETE FROM servers WHERE id = ?")
-        .bind(id)
-        .execute(pool)
-        .await?;
-
+        .bind(id).execute(pool).await?;
     Ok(())
 }
 
@@ -108,7 +115,8 @@ mod tests {
                 auth_type TEXT NOT NULL CHECK (auth_type IN ('password','key')),
                 credential BLOB NOT NULL,
                 group_name TEXT NOT NULL DEFAULT 'lab',
-                last_seen DATETIME
+                last_seen DATETIME,
+                project_id TEXT
             )"
         )
         .execute(&pool).await.expect("create servers");

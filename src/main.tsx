@@ -7,6 +7,8 @@ import Update from "./pages/Update";
 import Monitor from "./pages/Monitor";
 import Audit from "./pages/Audit";
 import Templates from "./pages/Templates";
+import Projects from "./pages/Projects";
+import BulkDeploy from "./pages/BulkDeploy";
 import Layout from "./components/Layout";
 import "./index.css";
 
@@ -21,6 +23,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <Route path="/monitor" element={<Monitor />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/templates" element={<Templates />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/bulk-deploy" element={<BulkDeploy />} />
         </Routes>
       </Layout>
     </BrowserRouter>

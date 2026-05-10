@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Eye, EyeOff, Loader2, CheckCircle2, XCircle, Server } from "lucide-react";
 import { useServerStore } from "@/store/serverStore";
-import { testConnection } from "@/lib/tauri/commands";
-import type { AddServerPayload, AuthType } from "@/types";
+import { testConnection, listProjects } from "@/lib/tauri/commands";
+import type { AddServerPayload, AuthType, Project } from "@/types";
 
 interface Props {
   open: boolean;
@@ -30,6 +30,7 @@ type TestStatus = "idle" | "testing" | "ok" | "error";
 
 export default function AddServerDialog({ open, onOpenChange }: Props) {
   const addServer = useServerStore((s) => s.addServer);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const [form, setForm] = useState<AddServerPayload>({
     name: "",
@@ -39,7 +40,12 @@ export default function AddServerDialog({ open, onOpenChange }: Props) {
     auth_type: "password",
     credential: "",
     group_name: "lab",
+    project_id: null,
   });
+
+  useEffect(() => {
+    if (open) listProjects().then(setProjects).catch(() => {});
+  }, [open]);
 
   const [showCredential, setShowCredential] = useState(false);
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
@@ -88,7 +94,7 @@ export default function AddServerDialog({ open, onOpenChange }: Props) {
   };
 
   const resetForm = () => {
-    setForm({ name: "", host: "", port: 22, username: "root", auth_type: "password", credential: "", group_name: "lab" });
+    setForm({ name: "", host: "", port: 22, username: "root", auth_type: "password", credential: "", group_name: "lab", project_id: null });
     setTestStatus("idle");
     setTestMsg("");
     setError("");
@@ -109,6 +115,28 @@ export default function AddServerDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="space-y-5 py-2 animate-fade-in-up">
+          {projects.length > 0 && (
+            <div>
+              <Label className={labelClass}>Project</Label>
+              <Select value={form.project_id ?? "__none__"} onValueChange={(v) => set({ project_id: v === "__none__" ? null : v })}>
+                <SelectTrigger className="input-glass rounded-xl h-11 font-bold text-[13px]">
+                  <SelectValue placeholder="— Không gắn project —" />
+                </SelectTrigger>
+                <SelectContent className="glass-dialog border-white/10 rounded-xl">
+                  <SelectItem value="__none__" className="font-bold opacity-50">— Không gắn project —</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id} className="font-bold">
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: p.color }} />
+                        {p.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className={labelClass}>Tên Hiển Thị</Label>

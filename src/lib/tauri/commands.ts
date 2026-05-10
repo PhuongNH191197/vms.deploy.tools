@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult, ToolMeta } from "@/types";
+import type { Server, ServerInfo, AddServerPayload, ServerMetrics, MetricsPoint, ToolCheckResult, ToolMeta, Project } from "@/types";
 
 export async function addServer(payload: AddServerPayload): Promise<string> {
   return invoke("add_server", { payload });
@@ -120,4 +120,20 @@ export async function getMetricsHistory(
   hours?: number,
 ): Promise<MetricsPoint[]> {
   return invoke("get_metrics_history", { serverId, hours: hours ?? 24 });
+}
+
+export async function createProject(payload: { name: string; description: string; color: string }): Promise<string> {
+  return invoke("create_project", { payload });
+}
+
+export async function listProjects(): Promise<Project[]> {
+  return invoke("list_projects");
+}
+
+export async function updateProject(id: string, payload: { name: string; description: string; color: string }): Promise<void> {
+  return invoke("update_project", { id, payload });
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  return invoke("delete_project", { id });
 }
