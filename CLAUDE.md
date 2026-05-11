@@ -146,6 +146,25 @@ Desktop app Windows: DevOps deploy 20+ Linux servers qua SSH.
 Stack: Tauri 2.0 + React 18 + TypeScript + Rust backend.
 File: docs/PRD.md — đọc file này để biết full spec.
 
+## ⛔ IMPORTANT — SAFETY RULE CẤP 1 (KHÔNG BAO GIỜ VI PHẠM)
+
+**NGHIÊM CẤM TUYỆT ĐỐI — không được thực hiện bất kỳ lệnh nào dưới đây mà không có sự cho phép rõ ràng của người dùng:**
+
+- `git reset --hard` / `git clean` / `git checkout -- .` / `git restore .`
+- `git push --force` / `git push -f`
+- `git branch -D` (xóa branch)
+- `git rebase -i` không có confirmation
+- `DROP TABLE` / `DROP DATABASE` / `TRUNCATE TABLE`
+- `DELETE FROM <table>` trên toàn bộ bảng (không có WHERE clause)
+- `rm -rf` trên thư mục source code hoặc thư mục dự án
+- Bất kỳ lệnh nào xóa, reset, clear source code hoặc database
+
+**QUY TẮC:**
+1. Bất cứ điều gì liên quan đến **DELETE / DROP / REMOVE / RESET / CLEAR** → **HỎI USER TRƯỚC**
+2. **Test case KHÔNG ĐƯỢC** dùng `git reset`, xóa source, hay drop database để reset trạng thái
+3. Database migrations chỉ được **ADD** (không DROP column, không DROP table)
+4. Khi viết SSH commands gửi lên server: chỉ xóa file **tạm thời trong /tmp/** — không xóa thư mục app/source
+
 ## Architecture Law (KHÔNG BAO GIỜ VI PHẠM)
 - RUST = SSH, SCP, SQLite, file I/O, encryption, process exec
 - REACT = TẤT CẢ UI, state, routing, display
@@ -191,42 +210,37 @@ Khi còn khoảng 20% context window:
 3. Thông báo: "⚠️ TOKEN THẤP — Đã lưu checkpoint. Chạy claude --continue để tiếp tục."
 
 ## Session Checkpoint
-LAST_ACTION: Redesign trang Monitor hoàn toàn — 4-part layout với mock data, Playwright verified
+LAST_ACTION: 2026-05-11 — Full GitLab Runner feature committed (c604c7f), Safety Rule CẤP 1 added
 CURRENT_FILE: —
-NEXT_STEP: Commit session 2026-05-10, sau đó kết nối Monitor với Tauri backend thực (thay mock data)
+NEXT_STEP: Kết nối Monitor với Tauri backend thực (thay mock data) HOẶC tiếp tục wizard/runner theo yêu cầu user
 BLOCKED_BY: —
-NOTES: tsc 0 errors. Chưa commit. Wizard session 2026-05-08 cũng chưa commit (cần commit cả 2).
+NOTES: tsc 0 errors. cargo check 0 errors. Tất cả đã commit. Sẵn sàng làm việc tiếp.
+
+### Đã hoàn thành SESSION 2026-05-11:
+1. **GitLab Runner feature** — commit `c604c7f` (32 files, 5207 insertions):
+   - CRUD: install, register, status check, delete, git auth setup
+   - Batch ops: install + register + git auth trên nhiều servers
+   - Daemon: systemd + Docker fallback, fix gitlab-runner v18.x panic bug
+   - Git credentials: username:password format, explicit `/home/gitlab-runner/` paths
+   - Deploy wizard: dùng gitlab-runner credentials cho git clone, skip docker-compose cho git apps
+   - Step6Apps: VMS presets panel (10 modules FE/BE)
+   - composeGenerator: shared util, filter git-source apps
+2. **Fix 10 TS errors** (unused imports) — included in commit c604c7f
+3. **Safety Rule CẤP 1** — thêm vào CLAUDE.md + memory
 
 ### Test environment (Docker server):
 - Container: `vms-test-server` → `127.0.0.1:2222`, root/Elcom@123
 - Image: rastasheep/ubuntu-sshd:18.04 + docker socket mount + docker CLI v20.10 + docker-compose v5.1.3
-- Compose test file: `C:\test-vms\minio\docker-compose.yml`
 - Start container nếu tắt: `docker start vms-test-server`
 
-### Files thay đổi SESSION 2026-05-10 (Monitor Redesign):
-- `src/types/monitor.ts` — NEW: MockServer, MockContainer, MonitorProject, LogPanelLayout types
-- `src/store/monitorStore.ts` — EXTENDED: giữ polling logic, thêm UI state (project, selection, modal, filter, autoRefresh)
-- `src/components/ServerCard.tsx` — REWRITE: compact 220px health card (CPU/RAM/Disk bars, status dot, container count)
-- `src/components/LogPanel.tsx` — REWRITE: mock streaming log panel (setInterval, no xterm.js, color-coded levels)
-- `src/components/MultiLogViewer.tsx` — NEW: fullscreen modal, auto grid (1/2/3/4 col), shared command input
-- `src/components/ContainerTable.tsx` — NEW: unified table, filter bar, checkboxes, sticky selection bar
-- `src/pages/Monitor.tsx` — REWRITE: 4-part layout (Header + Server overview + Container table + Log modal)
+### GitLab Runner — VMS Presets (10 modules đã có sẵn trong Step6):
+- **Frontend**: vms_vas, vms_ups, vms_web
+- **Backend**: vms_ai, vms_center, vms_device, vms_identity, vms_logs, vms_notification, vms_system
+- Git URL: `https://git.elcomlab.com/vms/source/elcom.vms.<name>.git`
+- Default branch: `test/master`
 
-### Tính năng Monitor mới (UI-only mock data, Playwright tested):
-1. Header: project selector dropdown, badges (servers/running/alerts), Refresh, Auto-refresh ON/OFF + 5s/10s/30s
-2. Server Health Overview: 6 cards scroll ngang, status dot, 3 mini metric bars, WARNING/OFFLINE style
-3. Container Table: filter by server/status/search, checkbox multi-select, status badges, action buttons (Logs/Restart/Stop)
-4. Sticky bar: slide-up khi có checkbox selection, "N containers selected", [Xem Logs] [Restart All] [Clear]
-5. Multi-Log Viewer: fullscreen modal opaque, auto grid layout, mock streaming logs, Pause/Clear/Download/Search
-
-### Files thay đổi SESSION 2026-05-08 (Wizard Bugs — chưa commit):
-- `src/components/wizard/Step2EnvCheck.tsx` — sequential install, real-time log, per-tool recheck
-- `src/components/wizard/Step3Networks.tsx` — fix skip condition
-- `src/components/wizard/Step4Externals.tsx` — bỏ mandatory disabled
-- `src/components/wizard/Step7Deploy.tsx` — auto-upload compose cho apps
-- `src/components/wizard/Step6Apps.tsx` — import từ composeGenerator
-- `src/lib/composeGenerator.ts` — NEW: shared generateCombinedCompose
-- `src/lib/tauri/commands.ts` — thêm runAptUpdate
-- `src-tauri/src/commands/env_check.rs` — apt_retry, run_apt_update, fix install return Err
-- `src-tauri/src/lib.rs` — register run_apt_update
-- `build-release.bat` — NEW: one-click build
+### Monitor — TODO khi tiếp tục:
+1. Load servers từ `useServerStore().servers` thay MOCK_SERVERS
+2. Fetch containers: `invoke("get_container_info", {...})` per server
+3. LogPanel: replace mock setInterval với real SSH stream
+4. Server metrics: dùng `useMonitorStore().entries[serverId].metrics`
