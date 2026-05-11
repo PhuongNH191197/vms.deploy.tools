@@ -210,28 +210,39 @@ export default function Step7Deploy() {
 
       // Step 4: deploy apps
       if (apps.length > 0) {
-        // Auto-upload combined docker-compose.yml (user may have skipped Step6 save button)
-        const composeContent = generateCombinedCompose(apps, dockerNetworks, rootPath);
-        await invoke("write_remote_file", {
-          host: server.host, port: server.port,
-          username: server.username, authType: server.auth_type, credential,
-          remotePath: `${rootPath}/docker-compose.yml`,
-          content: composeContent,
-        });
-        appendLog(`Wrote ${rootPath}/docker-compose.yml`);
+        // Only write docker-compose.yml if there are non-git apps (git apps use CI/CD)
+        const composableApps = apps.filter((a) => a.source !== "git");
+        if (composableApps.length > 0) {
+          const composeContent = generateCombinedCompose(apps, dockerNetworks, rootPath);
+          await invoke("write_remote_file", {
+            host: server.host, port: server.port,
+            username: server.username, authType: server.auth_type, credential,
+            remotePath: `${rootPath}/docker-compose.yml`,
+            content: composeContent,
+          });
+          appendLog(`Wrote ${rootPath}/docker-compose.yml`);
+        }
 
         const appCmds = apps.flatMap((app) => {
           const slug = app.name.replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
           const dir = `${rootPath}/apps/${slug}`;
           const cmds = [];
           if (app.source === "git" && app.gitUrl) {
-            const token = app.gitToken ? app.gitToken + "@" : "";
-            const url = app.gitUrl.replace("https://", `https://${token}`);
-            cmds.push(`git -C ${dir} pull 2>&1 || git clone -b ${app.gitBranch || "main"} ${url} ${dir} 2>&1`);
+            const branch = app.gitBranch || "main";
+            if (app.gitToken) {
+              const url = app.gitUrl.replace("https://", `https://${app.gitToken}@`);
+              cmds.push(`git -C ${dir} pull 2>&1 || git clone -b ${branch} ${url} ${dir} 2>&1`);
+            } else {
+              const gitAs = `sudo -u gitlab-runner env HOME=/home/gitlab-runner GIT_CONFIG_GLOBAL=/home/gitlab-runner/.gitconfig`;
+              cmds.push(`sudo chown -R gitlab-runner:gitlab-runner ${dir} 2>/dev/null; ${gitAs} git -C ${dir} pull 2>&1 || ${gitAs} git clone -b ${branch} ${app.gitUrl} ${dir} 2>&1`);
+            }
           } else if (app.source === "offline" && app.tarServerPath) {
             cmds.push(`docker load < ${app.tarServerPath} 2>&1`);
           }
-          cmds.push(`cd ${rootPath} && docker-compose up -d ${slug} 2>&1`);
+          // git source: CI/CD handles build & deploy — skip docker-compose up
+          if (app.source !== "git") {
+            cmds.push(`cd ${rootPath} && docker-compose up -d ${slug} 2>&1`);
+          }
           return cmds;
         });
         await runStep("apps", appCmds);

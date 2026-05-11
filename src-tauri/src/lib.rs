@@ -12,6 +12,13 @@ use commands::deploy::{run_ssh_stream, run_deploy_step, save_deploy_record, get_
 use commands::monitor::{LogStreamState, get_container_info, stream_container_logs, stop_log_stream, docker_container_action, save_metrics_snapshot, get_metrics_history};
 use commands::templates::{get_template_config, save_template_config, list_template_files, sync_git_templates};
 use commands::project::{create_project, list_projects, update_project, delete_project};
+use commands::gitlab_runner::{
+    check_gitlab_runner_installed, install_gitlab_runner, register_gitlab_runner,
+    setup_git_auth, scan_runners_from_server, list_gitlab_runners, check_runner_status,
+    save_gitlab_api_settings, get_gitlab_api_settings, batch_install_gitlab_runner,
+    batch_register_gitlab_runner, batch_setup_git_auth, delete_gitlab_runner,
+    get_gitlab_project_names,
+};
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -73,6 +80,20 @@ pub fn run() {
             list_projects,
             update_project,
             delete_project,
+            check_gitlab_runner_installed,
+            install_gitlab_runner,
+            register_gitlab_runner,
+            setup_git_auth,
+            scan_runners_from_server,
+            list_gitlab_runners,
+            check_runner_status,
+            save_gitlab_api_settings,
+            get_gitlab_api_settings,
+            batch_install_gitlab_runner,
+            batch_register_gitlab_runner,
+            batch_setup_git_auth,
+            delete_gitlab_runner,
+            get_gitlab_project_names,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

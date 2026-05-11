@@ -9,6 +9,7 @@ import Audit from "./pages/Audit";
 import Templates from "./pages/Templates";
 import Projects from "./pages/Projects";
 import BulkDeploy from "./pages/BulkDeploy";
+import GitLabRunner from "./pages/GitLabRunner";
 import Layout from "./components/Layout";
 import "./index.css";
 
@@ -25,6 +26,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
           <Route path="/templates" element={<Templates />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/bulk-deploy" element={<BulkDeploy />} />
+          <Route path="/gitlab-runner" element={<GitLabRunner />} />
         </Routes>
       </Layout>
     </BrowserRouter>

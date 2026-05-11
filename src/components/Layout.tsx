@@ -42,6 +42,8 @@ export default function Layout({ children }: { children: ReactNode }) {
         return "Real-time System Monitoring";
       case "/audit":
         return "Security & Operation Logs";
+      case "/gitlab-runner":
+        return "GitLab Runner Management";
       default:
         return "Infrastructure Overview";
     }

@@ -184,7 +184,7 @@ export const useWizardStore = create<WizardState>((set) => ({
       apps: [...s.apps, {
         id: crypto.randomUUID(),
         name: "", source: "online", image: "", version: "latest",
-        tarServerPath: "", gitUrl: "", gitBranch: "main", gitToken: "",
+        tarServerPath: "", gitUrl: "", gitBranch: "test/master", gitToken: "",
       }],
     })),
 

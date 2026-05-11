@@ -7,6 +7,7 @@ import {
   Settings,
   FolderKanban,
   Zap,
+  GitMerge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const menuItems = [
   { icon: Rocket, label: "deployments", path: "/update", color: "#C084FC", glowColor: "rgba(192,132,252" },
   { icon: Layers, label: "infrastructure", path: "/setup", color: "#4ADE80", glowColor: "rgba(74,222,128" },
   { icon: Bell, label: "alerts", path: "/monitor", color: "#FB923C", glowColor: "rgba(251,146,60" },
+  { icon: GitMerge, label: "gitlab runner", path: "/gitlab-runner", color: "#E2734A", glowColor: "rgba(226,115,74" },
   { icon: Settings, label: "settings", path: "/audit", color: "#94A3B8", glowColor: "rgba(148,163,184" },
 ];
 

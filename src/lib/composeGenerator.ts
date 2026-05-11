@@ -5,10 +5,12 @@ export function generateCombinedCompose(
   networks: string[],
   rootPath: string,
 ): string {
-  if (apps.length === 0) return "# No applications configured";
+  // git apps managed by CI/CD — exclude from docker-compose.yml
+  const composableApps = apps.filter((a) => a.source !== "git");
+  if (composableApps.length === 0) return "# No applications configured";
   let yaml = `version: "3.8"\n\nservices:\n`;
 
-  for (const app of apps) {
+  for (const app of composableApps) {
     const svc = app.name.replace(/[^a-z0-9_-]/gi, "_").toLowerCase() || "app";
     yaml += `  ${svc}:\n`;
     if (app.source === "online") {

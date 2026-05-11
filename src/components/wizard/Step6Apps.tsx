@@ -7,12 +7,128 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Eye, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Eye, Loader2, ChevronDown, ChevronRight, PackagePlus } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useWizardStore } from "@/store/wizardStore";
 import { useServerStore } from "@/store/serverStore";
 import type { AppModule } from "@/store/wizardStore";
 import { generateCombinedCompose } from "@/lib/composeGenerator";
+
+// ── VMS Project Presets ───────────────────────────────────────────────────────
+
+interface PresetModule {
+  name: string;
+  gitUrl: string;
+  group: "Frontend" | "Backend";
+}
+
+const VMS_PRESETS: PresetModule[] = [
+  { name: "vms_vas", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.vas.git", group: "Frontend" },
+  { name: "vms_ups", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.ups.git", group: "Frontend" },
+  { name: "vms_web", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.git", group: "Frontend" },
+  { name: "vms_ai", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.ai.git", group: "Backend" },
+  { name: "vms_center", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.center.git", group: "Backend" },
+  { name: "vms_device", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.device.git", group: "Backend" },
+  { name: "vms_identity", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.identityserver4.git", group: "Backend" },
+  { name: "vms_logs", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.logs.git", group: "Backend" },
+  { name: "vms_notification", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.notification.git", group: "Backend" },
+  { name: "vms_system", gitUrl: "https://git.elcomlab.com/vms/source/elcom.vms.system.git", group: "Backend" },
+];
+
+function PresetPanel({ onAdd }: { onAdd: (presets: PresetModule[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggle = (name: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  };
+
+  const toggleGroup = (group: "Frontend" | "Backend") => {
+    const groupNames = VMS_PRESETS.filter((p) => p.group === group).map((p) => p.name);
+    const allSelected = groupNames.every((n) => selected.has(n));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) groupNames.forEach((n) => next.delete(n));
+      else groupNames.forEach((n) => next.add(n));
+      return next;
+    });
+  };
+
+  const handleAdd = () => {
+    const toAdd = VMS_PRESETS.filter((p) => selected.has(p.name));
+    onAdd(toAdd);
+    setSelected(new Set());
+    setOpen(false);
+  };
+
+  return (
+    <div className="border border-dashed border-white/20 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.03] text-sm text-white/60"
+      >
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <PackagePlus size={13} />
+        <span className="font-medium">VMS Project Presets</span>
+        <span className="text-xs text-white/30 ml-1">({VMS_PRESETS.length} modules)</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-white/10 p-3 space-y-3">
+          {(["Frontend", "Backend"] as const).map((group) => {
+            const groupModules = VMS_PRESETS.filter((p) => p.group === group);
+            const allChecked = groupModules.every((p) => selected.has(p.name));
+            return (
+              <div key={group} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={() => toggleGroup(group)}
+                    className="w-3.5 h-3.5 accent-blue-500"
+                  />
+                  <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">{group}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 pl-5">
+                  {groupModules.map((p) => (
+                    <label key={p.name} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.name)}
+                        onChange={() => toggle(p.name)}
+                        className="w-3.5 h-3.5 accent-blue-500"
+                      />
+                      <span className="text-xs text-white/70 font-mono group-hover:text-white">{p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs text-white/30">{selected.size} module được chọn</span>
+            <Button
+              size="sm"
+              className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={selected.size === 0}
+              onClick={handleAdd}
+            >
+              <Plus size={11} className="mr-1" />
+              Thêm {selected.size > 0 ? selected.size : ""} module
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Module Card ───────────────────────────────────────────────────────────────
 
 interface ModuleCardProps {
   module: AppModule;
@@ -116,6 +232,8 @@ function ModuleCard({ module }: ModuleCardProps) {
   );
 }
 
+// ── Main Step ─────────────────────────────────────────────────────────────────
+
 export default function Step6Apps() {
   const { apps, addApp, selectedServerId, credential, dockerNetworks, rootPath, nextStep, prevStep } = useWizardStore();
   const { servers } = useServerStore();
@@ -125,10 +243,29 @@ export default function Step6Apps() {
   const [saveErr, setSaveErr] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const composableApps = apps.filter((a) => a.source !== "git");
   const composeContent = generateCombinedCompose(apps, dockerNetworks, rootPath);
 
+  const handleAddPresets = (presets: PresetModule[]) => {
+    const existingNames = new Set(apps.map((a) => a.name));
+    for (const p of presets) {
+      if (existingNames.has(p.name)) continue;
+      useWizardStore.getState().addApp();
+      // Get the newly added app (last in list) and update it
+      const newApps = useWizardStore.getState().apps;
+      const newId = newApps[newApps.length - 1].id;
+      useWizardStore.getState().updateApp(newId, {
+        name: p.name,
+        source: "git",
+        gitUrl: p.gitUrl,
+        gitBranch: "test/master",
+        gitToken: "",
+      });
+    }
+  };
+
   const handleSaveCompose = async () => {
-    if (!server) return;
+    if (!server || composableApps.length === 0) return;
     setSaving(true); setSaveErr(""); setSaved(false);
     try {
       await invoke("write_remote_file", {
@@ -148,11 +285,13 @@ export default function Step6Apps() {
         <p className="text-sm text-muted-foreground">Cấu hình các ứng dụng cần deploy.</p>
       </div>
 
-      <ScrollArea className="h-[300px] pr-1">
+      <PresetPanel onAdd={handleAddPresets} />
+
+      <ScrollArea className="h-[260px] pr-1">
         <div className="space-y-2">
           {apps.map((app) => <ModuleCard key={app.id} module={app} />)}
           {apps.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">Chưa có module nào. Nhấn [+ Add Module] để thêm.</p>
+            <p className="text-sm text-muted-foreground text-center py-8">Chưa có module nào. Chọn từ preset hoặc nhấn [+ Add Module].</p>
           )}
         </div>
       </ScrollArea>
@@ -161,7 +300,7 @@ export default function Step6Apps() {
         <Plus size={13} className="mr-1" />Add Module
       </Button>
 
-      {apps.length > 0 && (
+      {composableApps.length > 0 && (
         <>
           <Separator />
           <div className="flex items-center gap-3">
