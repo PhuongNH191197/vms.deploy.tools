@@ -230,8 +230,24 @@ export default function Step7Deploy() {
 
             // 4. Special post-setup for Keycloak
             if (svc.name === "keycloak") {
-              // Wait for Keycloak HTTP to be ready before running setup (JVM takes 60-120s)
-              cmds.push(`echo "Waiting for Keycloak to be ready (up to 180s)..."; timeout 180 bash -c 'until docker exec keycloak curl -fs http://localhost:8080/health/ready 2>/dev/null; do echo "Still waiting..."; sleep 5; done' && echo "Keycloak ready" || echo "WARNING: Keycloak did not respond in 180s"`);
+              // Wait for Keycloak to be ready by watching its own logs (no curl/wget needed in image)
+              // Also detect crash early; dump last 30 log lines on failure for diagnostics
+              cmds.push(
+                `echo "Waiting for Keycloak to start (up to 300s)..."; ` +
+                `timeout 300 bash -c '` +
+                  `while true; do ` +
+                    `STATUS=$(docker inspect --format "{{.State.Status}}" keycloak 2>/dev/null); ` +
+                    `if [ "$STATUS" = "exited" ] || [ "$STATUS" = "dead" ]; then ` +
+                      `echo "ERROR: Keycloak container stopped (status=$STATUS). Logs:"; ` +
+                      `docker logs keycloak --tail 40 2>&1; exit 1; ` +
+                    `fi; ` +
+                    `if docker logs keycloak 2>&1 | grep -q "Keycloak.*started in\\|Listening on.*8080\\|Running the server"; then ` +
+                      `echo "Keycloak ready"; exit 0; ` +
+                    `fi; ` +
+                    `echo "Still waiting ($STATUS)..."; sleep 5; ` +
+                  `done` +
+                `\' && echo "=== Keycloak started ===" || echo "WARNING: Keycloak did not start in 300s"`
+              );
               // Copy setup script into container and run it
               cmds.push(`docker cp ${dir}/setup-keycloak.sh keycloak:/opt/keycloak/setup-vms.sh 2>&1`);
               cmds.push(`docker exec keycloak bash /opt/keycloak/setup-vms.sh 2>&1`);
