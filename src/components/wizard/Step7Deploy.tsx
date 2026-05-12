@@ -31,7 +31,7 @@ function buildDeploySteps(
 ): DeployStep[] {
   const steps: DeployStep[] = [
     { id: "dirs", label: "Tạo thư mục", status: "pending" },
-    { id: "vms_env", label: "Ghi vms.env", status: "pending" },
+    { id: "vms_env", label: "Ghi file .env master", status: "pending" },
   ];
 
   if (selectedExternals.length > 0) {
@@ -102,17 +102,6 @@ export default function Step7Deploy() {
     }
   };
 
-  const buildEnvContent = () => {
-    const lines = ["# vms.env"];
-    for (const svc of selectedExternals) {
-      const vars = envVars[svc.name] ?? [];
-      if (vars.length === 0) continue;
-      lines.push(`# ${svc.displayName}`);
-      vars.forEach((v) => { if (v.key.trim()) lines.push(`${v.key}=${v.value}`); });
-      lines.push("");
-    }
-    return lines.join("\n");
-  };
 
   const handleDeploy = async () => {
     if (!server) return;
@@ -138,16 +127,54 @@ export default function Step7Deploy() {
       const mkdirCmd = `mkdir -p ${rootPath} ${[...extDirs, ...appDirs].join(" ")}`;
       await runStep("dirs", [mkdirCmd]);
 
-      // Step 2: write vms.env
+      // Step 2: Merge .env on server (pure SSH — no SFTP)
       updateDeployStep("vms_env", { status: "running" });
-      const envContent = buildEnvContent();
-      await invoke("write_vms_env", {
-        host: server.host, port: server.port,
-        username: server.username, authType: server.auth_type, credential,
-        rootPath, content: envContent,
-      });
-      appendLog(`Wrote ${rootPath}/vms.env`);
-      updateDeployStep("vms_env", { status: "done" });
+      const envPath = `${rootPath}/external/.env`;
+
+      try {
+        // Collect all key=value pairs to set/update
+        const allVars: [string, string][] = [];
+        (envVars["global"] ?? []).forEach(v => { if (v.key.trim()) allVars.push([v.key.trim(), v.value]); });
+        for (const svc of selectedExternals) {
+          (envVars[svc.name] ?? []).forEach(v => { if (v.key.trim()) allVars.push([v.key.trim(), v.value]); });
+        }
+
+        appendLog(`Merging ${allVars.length} vars into ${envPath}`);
+
+        // Build SSH commands for server-side merge
+        const mergeCmds: string[] = [];
+
+        // 1. Backup existing .env (if any)
+        mergeCmds.push(`[ -f ${envPath} ] && cp ${envPath} ${envPath}.$(date +%Y%m%d%H%M%S) && echo "Backed up existing .env" || echo "No existing .env found"`);
+
+        // 2. Ensure file exists with header
+        mergeCmds.push(`touch ${envPath}`);
+        mergeCmds.push(`grep -q '^# .env' ${envPath} || sed -i '1i# .env — master configuration' ${envPath}`);
+
+        // 3. Upsert each key: delete old line (if exists) + append new value
+        for (const [key, value] of allVars) {
+          // Escape single quotes in value for bash safety
+          const safeVal = value.replace(/'/g, "'\\''");
+          mergeCmds.push(`sed -i '/^${key}=/d' ${envPath} && echo '${key}=${safeVal}' >> ${envPath}`);
+        }
+
+        // 4. Verify
+        mergeCmds.push(`echo "=== .env verification ($(wc -l < ${envPath}) lines) ==="`);
+        mergeCmds.push(`cat ${envPath}`);
+
+        await invoke("run_deploy_step", {
+          host: server.host, port: server.port,
+          username: server.username, authType: server.auth_type, credential,
+          commands: mergeCmds, eventId: EVENT_ID, stepId: "vms_env",
+        });
+
+        updateDeployStep("vms_env", { status: "done" });
+      } catch (e) {
+        appendLog(`[ERR] .env update failed: ${e}`);
+        updateDeployStep("vms_env", { status: "failed", error: String(e) });
+        throw e;
+      }
+
 
       // Step 3: upload files then start externals
       if (selectedExternals.length > 0) {
@@ -186,13 +213,32 @@ export default function Step7Deploy() {
           const extCmds = selectedExternals.flatMap((svc) => {
             const dir = `${rootPath}/external/${svc.name}`;
             const cmds: string[] = [];
+            
+            // 1. Copy .env master to local service dir
+            cmds.push(`cd ${dir} && cp ../.env .env`);
+
+            // 2. Load or Pull
             if (svc.source === "offline" && svc.tarPath.trim()) {
               const tarName = svc.tarPath.split(/[\\/]/).pop() ?? `${svc.name}.tar`;
-              cmds.push(`docker load < ${dir}/${tarName} 2>&1`);
+              cmds.push(`docker load -i ${dir}/${tarName} 2>&1`);
             } else {
-              cmds.push(`cd ${dir} && docker-compose pull 2>&1 || true`);
+              cmds.push(`cd ${dir} && docker-compose --env-file .env pull 2>&1 || true`);
             }
-            cmds.push(`cd ${dir} && docker-compose up -d 2>&1`);
+
+            // 3. Start service
+            cmds.push(`cd ${dir} && docker-compose --env-file .env up -d 2>&1`);
+
+            // 4. Special post-setup for Keycloak
+            if (svc.name === "keycloak") {
+              // Wait for Keycloak HTTP to be ready before running setup (JVM takes 60-120s)
+              cmds.push(`echo "Waiting for Keycloak to be ready (up to 180s)..."; timeout 180 bash -c 'until docker exec keycloak curl -fs http://localhost:8080/health/ready 2>/dev/null; do echo "Still waiting..."; sleep 5; done' && echo "Keycloak ready" || echo "WARNING: Keycloak did not respond in 180s"`);
+              // Copy setup script into container and run it
+              cmds.push(`docker cp ${dir}/setup-keycloak.sh keycloak:/opt/keycloak/setup-vms.sh 2>&1`);
+              cmds.push(`docker exec keycloak bash /opt/keycloak/setup-vms.sh 2>&1`);
+              // Extract client secret from container and write to host .env
+              cmds.push(`KC_SECRET=$(docker exec keycloak cat /tmp/kc-secret.txt 2>/dev/null) && [ -n "$KC_SECRET" ] && sed -i '/^KEYCLOAK_CLIENT_SECRET=/d' ${rootPath}/external/.env && echo "KEYCLOAK_CLIENT_SECRET=$KC_SECRET" >> ${rootPath}/external/.env && echo "Wrote KEYCLOAK_CLIENT_SECRET to .env" || echo "No secret found to write"`);
+            }
+
             return cmds;
           });
 
@@ -301,16 +347,30 @@ export default function Step7Deploy() {
 
       {/* Terminal */}
       {(deploying || logs.length > 0) && (
-        <div
-          ref={logRef}
-          className="h-48 overflow-y-auto bg-[#0d1117] rounded-lg p-3 font-mono text-xs text-green-400 space-y-0.5"
-        >
-          {logs.map((line, i) => (
-            <div key={i} className={line.startsWith("[ERR]") ? "text-red-400" : ""}>
-              {line || " "}
-            </div>
-          ))}
-          {deploying && <div className="animate-pulse">▊</div>}
+        <div className="relative">
+          <div className="absolute top-2 left-2 z-10 flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-6 text-[10px] bg-white/10 hover:bg-white/20 text-white border-none"
+              onClick={() => {
+                navigator.clipboard.writeText(logs.join("\n"));
+              }}
+            >
+              Copy Logs
+            </Button>
+          </div>
+          <div
+            ref={logRef}
+            className="h-64 overflow-y-auto bg-[#0d1117] rounded-lg p-3 pt-10 font-mono text-xs text-green-400 space-y-0.5 custom-scrollbar border border-white/5"
+          >
+            {logs.map((line, i) => (
+              <div key={i} className={line.startsWith("[ERR]") ? "text-red-400" : ""}>
+                {line || " "}
+              </div>
+            ))}
+            {deploying && <div className="animate-pulse">▊</div>}
+          </div>
         </div>
       )}
 
