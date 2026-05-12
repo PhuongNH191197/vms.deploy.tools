@@ -228,31 +228,35 @@ export default function Step7Deploy() {
             // 3. Start service
             cmds.push(`cd ${dir} && docker-compose --env-file .env up -d 2>&1`);
 
-            // 4. Special post-setup for Keycloak
+            // 4. Special post-setup for Keycloak — all in one conditional block
             if (svc.name === "keycloak") {
-              // Wait for Keycloak to be ready by watching its own logs (no curl/wget needed in image)
-              // Also detect crash early; dump last 30 log lines on failure for diagnostics
+              // Wait → if ready: run setup script → extract secret. If crash: dump logs and skip.
               cmds.push(
                 `echo "Waiting for Keycloak to start (up to 300s)..."; ` +
-                `timeout 300 bash -c '` +
-                  `while true; do ` +
-                    `STATUS=$(docker inspect --format "{{.State.Status}}" keycloak 2>/dev/null); ` +
-                    `if [ "$STATUS" = "exited" ] || [ "$STATUS" = "dead" ]; then ` +
-                      `echo "ERROR: Keycloak container stopped (status=$STATUS). Logs:"; ` +
-                      `docker logs keycloak --tail 40 2>&1; exit 1; ` +
-                    `fi; ` +
-                    `if docker logs keycloak 2>&1 | grep -q "Keycloak.*started in\\|Listening on.*8080\\|Running the server"; then ` +
-                      `echo "Keycloak ready"; exit 0; ` +
-                    `fi; ` +
-                    `echo "Still waiting ($STATUS)..."; sleep 5; ` +
-                  `done` +
-                `\' && echo "=== Keycloak started ===" || echo "WARNING: Keycloak did not start in 300s"`
+                `KC_READY=0; ` +
+                `for i in $(seq 1 60); do ` +
+                  `STATUS=$(docker inspect --format "{{.State.Status}}" keycloak 2>/dev/null); ` +
+                  `if [ "$STATUS" = "exited" ] || [ "$STATUS" = "dead" ]; then ` +
+                    `echo "ERROR: Keycloak crashed (status=$STATUS). Last logs:"; ` +
+                    `docker logs keycloak --tail 40 2>&1; break; ` +
+                  `fi; ` +
+                  `if docker logs keycloak 2>&1 | grep -q "Keycloak.*started in\\|Listening on.*8080\\|Running the server"; then ` +
+                    `echo "Keycloak ready after $((i*5))s"; KC_READY=1; break; ` +
+                  `fi; ` +
+                  `echo "Still waiting ($STATUS) [$i/60]..."; sleep 5; ` +
+                `done; ` +
+                `if [ "$KC_READY" = "1" ]; then ` +
+                  `echo "--- Running setup script ---"; ` +
+                  `docker cp ${dir}/setup-keycloak.sh keycloak:/opt/keycloak/setup-vms.sh 2>&1 && ` +
+                  `docker exec keycloak bash /opt/keycloak/setup-vms.sh 2>&1; ` +
+                  `KC_SECRET=$(docker exec keycloak cat /tmp/kc-secret.txt 2>/dev/null); ` +
+                  `if [ -n "$KC_SECRET" ]; then ` +
+                    `sed -i '/^KEYCLOAK_CLIENT_SECRET=/d' ${rootPath}/external/.env && ` +
+                    `echo "KEYCLOAK_CLIENT_SECRET=$KC_SECRET" >> ${rootPath}/external/.env && ` +
+                    `echo "Wrote KEYCLOAK_CLIENT_SECRET to .env"; ` +
+                  `else echo "WARNING: No client secret found in /tmp/kc-secret.txt"; fi; ` +
+                `else echo "SKIP: Keycloak setup skipped (container not ready)"; fi`
               );
-              // Copy setup script into container and run it
-              cmds.push(`docker cp ${dir}/setup-keycloak.sh keycloak:/opt/keycloak/setup-vms.sh 2>&1`);
-              cmds.push(`docker exec keycloak bash /opt/keycloak/setup-vms.sh 2>&1`);
-              // Extract client secret from container and write to host .env
-              cmds.push(`KC_SECRET=$(docker exec keycloak cat /tmp/kc-secret.txt 2>/dev/null) && [ -n "$KC_SECRET" ] && sed -i '/^KEYCLOAK_CLIENT_SECRET=/d' ${rootPath}/external/.env && echo "KEYCLOAK_CLIENT_SECRET=$KC_SECRET" >> ${rootPath}/external/.env && echo "Wrote KEYCLOAK_CLIENT_SECRET to .env" || echo "No secret found to write"`);
             }
 
             return cmds;
