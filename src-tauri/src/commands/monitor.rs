@@ -5,9 +5,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use tokio::time::Duration;
 use russh::ChannelMsg;
-use crate::error::AppError;
-use crate::ssh::SshSession;
-use crate::commands::server::DbState;
+use crate::commands::server::{DbState, connect_session_from_row};
 use crate::db::server_repo;
 use crate::db::metrics_repo::{self, MetricsPoint};
 
@@ -51,18 +49,6 @@ struct LogLine {
     done: bool,
 }
 
-// ── SSH helper ───────────────────────────────────────────────────────────────
-
-async fn open_session(
-    host: &str, port: u16, username: &str, auth_type: &str, credential: &str,
-) -> Result<SshSession, AppError> {
-    match auth_type {
-        "password" => SshSession::connect_password(host, port, username, credential).await,
-        "key"      => SshSession::connect_key(host, port, username, credential, None).await,
-        _          => Err(AppError::InvalidInput("Invalid auth_type".into())),
-    }
-}
-
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 /// Get running containers with CPU/RAM stats.
@@ -75,13 +61,10 @@ pub async fn get_container_info(
         .await
         .map_err(|e| e.to_string())?;
 
-    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
+    let mut session = connect_session_from_row(&row).await?;
 
-    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
-        .await.map_err(|e| e.to_string())?;
-
-    // docker ps: name|image|status|created
-    let ps_cmd = r#"docker ps --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.RunningFor}}" 2>&1"#;
+    // docker ps -a: name|image|status|created — include stopped containers
+    let ps_cmd = r#"docker ps -a --format "{{.Names}}|{{.Image}}|{{.Status}}|{{.RunningFor}}" 2>&1"#;
     let ps_out = session.execute(ps_cmd).await.map_err(|e| e.to_string())?;
 
     // docker stats --no-stream: name|cpu|mem
@@ -144,8 +127,6 @@ pub async fn stream_container_logs(
         .await
         .map_err(|e| e.to_string())?;
 
-    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
-
     // Register cancel flag
     let cancel = Arc::new(AtomicBool::new(true));
     {
@@ -156,8 +137,7 @@ pub async fn stream_container_logs(
         map.insert(event_id.clone(), cancel.clone());
     }
 
-    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
-        .await.map_err(|e| e.to_string())?;
+    let mut session = connect_session_from_row(&row).await?;
 
     let cmd = if let Some(custom) = custom_command {
         if custom.trim().is_empty() {
@@ -250,10 +230,7 @@ pub async fn docker_container_action(
         .await
         .map_err(|e| e.to_string())?;
 
-    let credential = crate::crypto::decrypt(&row.credential).map_err(|e| e.to_string())?;
-
-    let mut session = open_session(&row.host, row.port as u16, &row.username, &row.auth_type, &credential)
-        .await.map_err(|e| e.to_string())?;
+    let mut session = connect_session_from_row(&row).await?;
 
     let output = session
         .execute(&format!("docker {safe_action} {container} 2>&1"))
